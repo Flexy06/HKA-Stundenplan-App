@@ -40,6 +40,15 @@ class TimetableRepository(context: Context) {
         get() = prefs.getInt("reminderMinutes", 0)
         set(value) = prefs.edit().putInt("reminderMinutes", value).apply()
 
+    var showMensa: Boolean
+        get() = prefs.getBoolean("showMensa", true)
+        set(value) = prefs.edit().putBoolean("showMensa", value).apply()
+
+    /** Benachrichtigung bei Ausfällen/Raumänderungen (Hintergrund-Abgleich). */
+    var notifyChanges: Boolean
+        get() = prefs.getBoolean("notifyChanges", true)
+        set(value) = prefs.edit().putBoolean("notifyChanges", value).apply()
+
     /** "day" oder "week" */
     var viewMode: String
         get() = prefs.getString("viewMode", "day") ?: "day"

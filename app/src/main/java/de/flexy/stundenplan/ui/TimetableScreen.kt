@@ -301,6 +301,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
                                 state.visible.firstOrNull { !it.cancelled && it.date == today && it.start.isAfter(now) }
                             } else null,
                             now = now,
+                            mensa = if (state.showMensa && !date.isBefore(today)) state.mensa[date] else null,
                             bottomPadding = padding.calculateBottomPadding(),
                             onClick = { detail = it },
                             onRoomClick = { room, title -> openRoom(room, title) },
@@ -428,6 +429,7 @@ private fun DayPill(date: LocalDate, isSelected: Boolean, isToday: Boolean, hasE
 private sealed interface Row_ {
     data class Item(val lecture: Lecture) : Row_
     data class Gap(val minutes: Long) : Row_
+    data object Mensa : Row_
 }
 
 @Composable
@@ -437,11 +439,12 @@ private fun DayPage(
     lectures: List<Lecture>,
     nextUp: Lecture?,
     now: LocalDateTime,
+    mensa: List<de.flexy.stundenplan.data.MensaLine>?,
     bottomPadding: androidx.compose.ui.unit.Dp,
     onClick: (Lecture) -> Unit,
     onRoomClick: (RoomInfo, String?) -> Unit,
 ) {
-    val rows = remember(lectures) { buildRows(lectures) }
+    val rows = remember(lectures, mensa != null) { buildRows(lectures, mensa != null) }
     val active = lectures.filter { !it.cancelled }
 
     LazyColumn(
@@ -465,12 +468,14 @@ private fun DayPage(
             }
         }
         if (lectures.isEmpty()) {
+            if (mensa != null) item(key = "mensa") { MensaCard(mensa, Modifier.padding(top = 8.dp)) }
             item(key = "empty") { EmptyDay(date) }
         } else {
             items(rows.size, key = { i ->
                 when (val r = rows[i]) {
                     is Row_.Item -> "$i|${r.lecture.id}"
                     is Row_.Gap -> "$i|gap"
+                    Row_.Mensa -> "$i|mensa"
                 }
             }) { i ->
                 val r = rows[i]
@@ -481,15 +486,18 @@ private fun DayPage(
                         onRoomClick = { room -> onRoomClick(room, r.lecture.title) },
                     )
                     is Row_.Gap -> GapRow(r.minutes)
+                    Row_.Mensa -> if (mensa != null) MensaCard(mensa)
                 }
             }
         }
     }
 }
 
-private fun buildRows(lectures: List<Lecture>): List<Row_> {
+private fun buildRows(lectures: List<Lecture>, withMensa: Boolean): List<Row_> {
     val out = ArrayList<Row_>()
     var lastEnd: LocalDateTime? = null
+    var mensaPlaced = !withMensa
+    val lunch = java.time.LocalTime.of(12, 30)
     for (l in lectures) {
         if (!l.cancelled) {
             val prev = lastEnd
@@ -497,10 +505,16 @@ private fun buildRows(lectures: List<Lecture>): List<Row_> {
                 val gap = Duration.between(prev, l.start).toMinutes()
                 if (gap >= 30) out += Row_.Gap(gap)
             }
+            // Mensa-Karte in die Mittagspause: vor die erste Veranstaltung ab 12:30
+            if (!mensaPlaced && !l.start.toLocalTime().isBefore(lunch)) {
+                out += Row_.Mensa
+                mensaPlaced = true
+            }
             lastEnd = if (prev == null || l.end.isAfter(prev)) l.end else prev
         }
         out += Row_.Item(l)
     }
+    if (!mensaPlaced) out += Row_.Mensa
     return out
 }
 

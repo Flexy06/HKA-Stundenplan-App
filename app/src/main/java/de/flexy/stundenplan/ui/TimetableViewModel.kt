@@ -5,7 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import de.flexy.stundenplan.data.CampusMapData
 import de.flexy.stundenplan.data.CampusMapRepository
+import de.flexy.stundenplan.data.ChangeDetector
 import de.flexy.stundenplan.data.Lecture
+import de.flexy.stundenplan.data.MensaLine
+import de.flexy.stundenplan.data.MensaRepository
 import de.flexy.stundenplan.system.Reminders
 import de.flexy.stundenplan.widget.NextLectureWidget
 import de.flexy.stundenplan.data.TimetableRepository
@@ -30,6 +33,9 @@ data class UiState(
     val campusMap: CampusMapData? = null,
     val campusMapLoading: Boolean = false,
     val campusMapError: String? = null,
+    val mensa: Map<java.time.LocalDate, List<MensaLine>> = emptyMap(),
+    val showMensa: Boolean = true,
+    val notifyChanges: Boolean = true,
 ) {
     val visible: List<Lecture> by lazy {
         all.filter { it.title !in hidden && (showCancelled || !it.cancelled) }
@@ -45,6 +51,7 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = TimetableRepository(app)
     private val campusRepo = CampusMapRepository(app)
+    private val mensaRepo = MensaRepository(app)
 
     private val _state = MutableStateFlow(
         UiState(
@@ -54,6 +61,8 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
             lastUpdated = repo.lastUpdated(repo.semester),
             reminderMinutes = repo.reminderMinutes,
             weekView = repo.viewMode == "week",
+            showMensa = repo.showMensa,
+            notifyChanges = repo.notifyChanges,
         )
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -86,8 +95,19 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
         val sem = _state.value.semester
         refreshJob = viewModelScope.launch {
             _state.update { it.copy(refreshing = true, error = null) }
+            loadMensa()
             try {
+                val before = _state.value.all
                 val fresh = repo.fetch(sem)
+                // Änderungen seit dem letzten Stand kurz als Hinweis zeigen
+                if (before.isNotEmpty() && _state.value.semester == sem) {
+                    val changes = ChangeDetector.diff(before, fresh, repo.hiddenModules, java.time.LocalDateTime.now())
+                    if (changes.isNotEmpty()) {
+                        _state.update {
+                            it.copy(error = if (changes.size == 1) changes.first().text else "${changes.size} Änderungen im Stundenplan – z.B. ${changes.first().text}")
+                        }
+                    }
+                }
                 _state.update {
                     it.copy(all = fresh, lastUpdated = repo.lastUpdated(sem), refreshing = false, initialLoading = false)
                 }
@@ -133,6 +153,25 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun clearError() = _state.update { it.copy(error = null) }
+
+    private fun loadMensa(force: Boolean = false) {
+        if (!_state.value.showMensa) return
+        viewModelScope.launch {
+            val data = runCatching { mensaRepo.load(force) }.getOrDefault(emptyMap())
+            if (data.isNotEmpty()) _state.update { it.copy(mensa = data) }
+        }
+    }
+
+    fun setShowMensa(value: Boolean) {
+        repo.showMensa = value
+        _state.update { it.copy(showMensa = value) }
+        if (value) loadMensa()
+    }
+
+    fun setNotifyChanges(value: Boolean) {
+        repo.notifyChanges = value
+        _state.update { it.copy(notifyChanges = value) }
+    }
 
     fun setReminderMinutes(minutes: Int) {
         repo.reminderMinutes = minutes

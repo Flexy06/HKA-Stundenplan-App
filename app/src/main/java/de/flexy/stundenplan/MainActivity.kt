@@ -16,6 +16,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        de.flexy.stundenplan.system.SyncWorker.schedule(this)
         setContent {
             StundenplanTheme {
                 TimetableScreen(vm)

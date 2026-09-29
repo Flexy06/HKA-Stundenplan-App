@@ -462,6 +462,10 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                     vm.setShowCancelled(it)
                 }
                 ReminderSettings(state.reminderMinutes, vm::setReminderMinutes)
+                ChangeNotificationSetting(state.notifyChanges, vm::setNotifyChanges)
+                SwitchRow("Mensa-Speiseplan", "Essen der Mensa Moltke in der Mittagspause zeigen", state.showMensa) {
+                    vm.setShowMensa(it)
+                }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Text("Module", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -565,5 +569,22 @@ private fun ReminderSettings(current: Int, onChange: (Int) -> Unit) {
                 }
             }) { Text("Erlauben") }
         }
+    }
+}
+
+@Composable
+private fun ChangeNotificationSetting(checked: Boolean, onChange: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) onChange(true)
+    }
+    SwitchRow(
+        "Bei Änderungen benachrichtigen",
+        "Ausfälle, Raumänderungen und verlegte Termine (Abgleich alle paar Stunden)",
+        checked,
+    ) { on ->
+        val needsPermission = on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else onChange(on)
     }
 }

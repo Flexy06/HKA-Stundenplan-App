@@ -22,15 +22,18 @@ Voraussetzung: Android 8.0 oder neuer.
   dazu Navigation per Google Maps (mit dem Rad oder zu Fuß)
 - **Erinnerungen** 10, 15 oder 30 Minuten vor Beginn – mit Raum und Navigations-Button
 - **Widget** für den Homescreen mit deinen nächsten Terminen
+- **Mensa-Speiseplan** der Mensa Moltke direkt in der Mittagspause – mit Preisen und vegan/vegetarisch-Kennzeichnung
+- **Änderungs-Hinweise**: Benachrichtigung, wenn eine Vorlesung ausfällt, verlegt wird oder den Raum wechselt
 - **Ausfälle** werden durchgestrichen angezeigt
 - **Module ausblenden**, die dich nicht betreffen (z. B. andere Laborgruppen)
 - Funktioniert auch **offline** mit dem zuletzt geladenen Stand; nach unten ziehen zum Aktualisieren
 
 ## Datenschutz
 Die App braucht kein Konto und sammelt keine Daten. Sie lädt nur den öffentlichen
-Stundenplan von Raumzeit; alles andere bleibt auf deinem Handy.
+Stundenplan von Raumzeit und den Speiseplan des Studierendenwerks; alles andere bleibt auf deinem Handy.
 
 ## Lizenz & Quellen
 - Code: MIT-Lizenz, siehe [LICENSE](LICENSE)
 - Stundenplandaten: öffentliche Schnittstelle von [Raumzeit](https://raumzeit.hka-iwi.de) der HKA
+- Speiseplan: [Studierendenwerk Karlsruhe](https://www.sw-ka.de)
 - Kartendaten: © [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende, verfügbar unter der ODbL

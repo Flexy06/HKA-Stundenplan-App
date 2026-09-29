@@ -1,5 +1,5 @@
 <resources>
-    <color name="ic_bg">#FFE2001A</color>
+    <color name="ic_bg">#FF5A57CE</color>
     <color name="splash_bg">#FFFFFBFF</color>
 
     <!-- Widget (Fallback ohne Material You) -->
