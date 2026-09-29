@@ -28,10 +28,19 @@ jobs:
       - name: Signaturschlüssel aus Secrets holen
         env:
           KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
             mkdir -p signing
-            echo "$KEYSTORE_B64" | base64 -d > signing/stundenplan.jks
+            # Leerzeichen/Zeilenumbrüche aus dem kopierten Secret entfernen
+            if ! printf '%s' "$KEYSTORE_B64" | tr -d ' \r\n\t' | base64 -d > signing/stundenplan.jks 2>/dev/null; then
+              echo "::error::Secret SIGNING_KEYSTORE_BASE64 ist kein gültiges Base64. Bitte den kompletten Wert (nur die lange Zeichenkette, ohne 'Wert:') neu eintragen."
+              exit 1
+            fi
+            if ! keytool -list -keystore signing/stundenplan.jks -storepass "$STORE_PW" > /dev/null 2>&1; then
+              echo "::error::Keystore lässt sich mit SIGNING_STORE_PASSWORD nicht öffnen – Passwort-Secret prüfen."
+              exit 1
+            fi
             echo "Eigener Schlüssel wird verwendet."
           else
             echo "::warning::Kein SIGNING_KEYSTORE_BASE64-Secret – APK wird mit Debug-Schlüssel signiert."
