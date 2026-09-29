@@ -5,7 +5,7 @@ eines Studiensemesters aus **Raumzeit** der Hochschule Karlsruhe anzeigt.
 Standard: `ELTB.1.A` – änderbar in den Einstellungen.
 
 ## Datenquelle
-Keine HTML-Scraperei: Raumzeit hat eine öffentliche REST-API ohne Login.
+Raumzeit hat eine öffentliche REST-API ohne Login.
 
 - `GET https://raumzeit.hka-iwi.de/api/v1/timetables/public/ELTB.1.A` mit `Accept: text/calendar`
   → iCal mit jedem Einzeltermin (Ausfälle schon entfernt, Verlegungen eingerechnet)
@@ -26,16 +26,3 @@ im selben Raum) werden zusammengefasst.
 - Ausfälle durchgestrichen (abschaltbar), Module ausblenden (z. B. fremde Laborgruppen)
 - Offline-Cache, Pull-to-Refresh, Auto-Refresh wenn Stand > 30 min alt
 - Dynamic Color (Material You)
-
-Gebäude-Koordinaten: `data/Campus.kt` (bei Bedarf ergänzen).
-
-## Bauen
-In Android Studio öffnen → Run auf dem Pixel. Gleiche Gradle/AGP/Kotlin-Versionen wie VolleyHub.
-
-## APK über GitHub
-Jeder Push auf `main` startet **Actions → Build APK**. Das fertige APK hängt danach unter
-**Releases** (neueste Version oben) – direkt am Handy herunterladen und installieren.
-Manuell starten: Actions → Build APK → „Run workflow“.
-
-Signiert wird mit `app/signing/stundenplan.jks` (auch lokale Debug-Builds), daher
-lassen sich Android-Studio- und GitHub-APKs gegenseitig updaten. Repo bitte privat lassen.
