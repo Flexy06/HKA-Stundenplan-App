@@ -24,12 +24,14 @@ android {
     //  - lokal:  signing/stundenplan.jks + signing/signing.properties (beides in .gitignore)
     //  - GitHub: Secrets SIGNING_KEYSTORE_BASE64, SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD
     // Fehlt beides (z.B. in einem Fork), wird einfach mit dem Debug-Schlüssel signiert.
-    val signingProps = java.util.Properties().apply {
-        val f = rootProject.file("signing/signing.properties")
-        if (f.exists()) f.inputStream().use { load(it) }
+    val signingProps: Map<String, String> = rootProject.file("signing/signing.properties").let { f ->
+        if (!f.exists()) emptyMap() else f.readLines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains('=') }
+            .associate { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
     }
     fun signingValue(env: String, prop: String): String? =
-        System.getenv(env)?.takeIf { it.isNotBlank() } ?: signingProps.getProperty(prop)
+        System.getenv(env)?.takeIf { it.isNotBlank() } ?: signingProps[prop]
     val keystore = rootProject.file("signing/stundenplan.jks")
     val hasOwnKey = keystore.exists() && signingValue("SIGNING_STORE_PASSWORD", "storePassword") != null
 
