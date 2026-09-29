@@ -20,24 +20,37 @@ android {
         versionName = ciBuild?.let { "1.0.$it" } ?: "1.0.0-dev"
     }
 
-    // Eigener Schlüssel im Repo: Android Studio und GitHub signieren identisch,
-    // so lassen sich beide APKs gegenseitig drüber-installieren. (Repo privat halten!)
+    // Signatur: Schlüssel liegt NICHT im Repo.
+    //  - lokal:  signing/stundenplan.jks + signing/signing.properties (beides in .gitignore)
+    //  - GitHub: Secrets SIGNING_KEYSTORE_BASE64, SIGNING_STORE_PASSWORD, SIGNING_KEY_ALIAS, SIGNING_KEY_PASSWORD
+    // Fehlt beides (z.B. in einem Fork), wird einfach mit dem Debug-Schlüssel signiert.
+    val signingProps = java.util.Properties().apply {
+        val f = rootProject.file("signing/signing.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    fun signingValue(env: String, prop: String): String? =
+        System.getenv(env)?.takeIf { it.isNotBlank() } ?: signingProps.getProperty(prop)
+    val keystore = rootProject.file("signing/stundenplan.jks")
+    val hasOwnKey = keystore.exists() && signingValue("SIGNING_STORE_PASSWORD", "storePassword") != null
+
     signingConfigs {
-        create("shared") {
-            storeFile = file("signing/stundenplan.jks")
-            storePassword = "stundenplan"
-            keyAlias = "stundenplan"
-            keyPassword = "stundenplan"
+        if (hasOwnKey) {
+            create("own") {
+                storeFile = keystore
+                storePassword = signingValue("SIGNING_STORE_PASSWORD", "storePassword")
+                keyAlias = signingValue("SIGNING_KEY_ALIAS", "keyAlias") ?: "stundenplan"
+                keyPassword = signingValue("SIGNING_KEY_PASSWORD", "keyPassword")
+            }
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("shared")
+            if (hasOwnKey) signingConfig = signingConfigs.getByName("own")
         }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("shared")
+            signingConfig = signingConfigs.getByName(if (hasOwnKey) "own" else "debug")
         }
     }
     compileOptions {

@@ -1,4 +1,6 @@
-# Stundenplan (HKA Raumzeit)
+# HKA Stundenplan
+
+> Inoffizielle Open-Source-App – kein Angebot der Hochschule Karlsruhe.
 
 Android-App (Kotlin, Jetpack Compose, Material 3 Expressive), die den Stundenplan
 eines Studiensemesters aus **Raumzeit** der Hochschule Karlsruhe anzeigt.
@@ -32,10 +34,20 @@ Gebäude-Koordinaten: `data/Campus.kt` (bei Bedarf ergänzen).
 ## Bauen
 In Android Studio öffnen → Run auf dem Pixel. Gleiche Gradle/AGP/Kotlin-Versionen wie VolleyHub.
 
-## APK über GitHub
-Jeder Push auf `main` startet **Actions → Build APK**. Das fertige APK hängt danach unter
-**Releases** (neueste Version oben) – direkt am Handy herunterladen und installieren.
-Manuell starten: Actions → Build APK → „Run workflow“.
+## Installieren
+Neueste APK unter **[Releases](../../releases/latest)** herunterladen und auf dem Handy öffnen
+(einmalig „Installation aus unbekannten Quellen“ erlauben).
 
-Signiert wird mit `app/signing/stundenplan.jks` (auch lokale Debug-Builds), daher
-lassen sich Android-Studio- und GitHub-APKs gegenseitig updaten. Repo bitte privat lassen.
+## APK-Build über GitHub Actions
+Jeder Push auf `main` startet **Actions → Build APK** und veröffentlicht das APK als Release.
+Manuell: Actions → Build APK → „Run workflow“.
+
+Signierung (optional, für update-fähige APKs) über Repository-Secrets:
+`SIGNING_KEYSTORE_BASE64` (Keystore als Base64), `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
+Ohne Secrets wird mit einem Debug-Schlüssel signiert. Lokal: `signing/stundenplan.jks` + `signing/signing.properties`
+(beides per `.gitignore` ausgeschlossen).
+
+## Lizenz & Daten
+- Code: MIT-Lizenz, siehe [LICENSE](LICENSE)
+- Stundenplandaten: öffentliche API von [Raumzeit](https://raumzeit.hka-iwi.de) der HKA
+- Kartendaten: © [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende, verfügbar unter der ODbL

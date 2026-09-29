@@ -7,3 +7,8 @@ local.properties
 *.iml
 .DS_Store
 captures/
+
+# Signaturschlüssel niemals committen
+signing/
+*.jks
+*.keystore

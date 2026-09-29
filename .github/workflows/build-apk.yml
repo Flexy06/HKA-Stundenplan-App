@@ -25,10 +25,30 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Signaturschlüssel aus Secrets holen
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p signing
+            echo "$KEYSTORE_B64" | base64 -d > signing/stundenplan.jks
+            echo "Eigener Schlüssel wird verwendet."
+          else
+            echo "::warning::Kein SIGNING_KEYSTORE_BASE64-Secret – APK wird mit Debug-Schlüssel signiert."
+          fi
+
       - name: APK bauen
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
+
+      - name: Schlüssel wieder löschen
+        if: always()
+        run: rm -f signing/stundenplan.jks
 
       - name: APK umbenennen
         run: |
