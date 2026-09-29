@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Stundenplan</string>
+    <string name="widget_description">Deine nächsten Vorlesungen mit Raum</string>
+</resources>

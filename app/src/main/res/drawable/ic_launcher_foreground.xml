@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kalenderblatt mit Uhr, 108dp Adaptive-Icon (Safe-Zone 66dp) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Blatt -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M38,34h32a6,6 0,0 1,6 6v28a6,6 0,0 1,-6 6h-32a6,6 0,0 1,-6 -6v-28a6,6 0,0 1,6 -6z" />
+    <!-- Ringe -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M43,28h4v10h-4z M61,28h4v10h-4z" />
+    <!-- Kopfleiste -->
+    <path
+        android:fillColor="#FFE2001A"
+        android:pathData="M32,44h44v3h-44z" />
+    <!-- Uhr -->
+    <path
+        android:fillColor="#FFE2001A"
+        android:pathData="M54,51a10,10 0,1 0,0.01 0z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M52.8,54.5h2.4v6h-2.4z M53,59h7v2.4h-7z" />
+</vector>
