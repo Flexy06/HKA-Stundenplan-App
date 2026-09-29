@@ -49,7 +49,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -154,16 +153,30 @@ fun TimetableScreen(vm: TimetableViewModel) {
 
     val todayMonday = mondayOf(today)
     val weekMode = state.weekView
-    // Pro Ansicht ein eigener Pager, der beim Umschalten am Fokus-Tag startet
-    val pager = key(weekMode, today, jumpToken) {
-        val focus = LocalDate.ofEpochDay(focusDate)
-        rememberPagerState(
-            initialPage = if (weekMode) {
-                (WEEK_CENTER + ChronoUnit.WEEKS.between(todayMonday, mondayOf(focus))).toInt().coerceIn(0, WEEK_COUNT - 1)
-            } else {
-                (CENTER + ChronoUnit.DAYS.between(today, focus)).toInt().coerceIn(0, PAGE_COUNT - 1)
-            }
-        ) { if (weekMode) WEEK_COUNT else PAGE_COUNT }
+    fun dayPageOf(d: LocalDate) = (CENTER + ChronoUnit.DAYS.between(today, d)).toInt().coerceIn(0, PAGE_COUNT - 1)
+    fun weekPageOf(d: LocalDate) =
+        (WEEK_CENTER + ChronoUnit.WEEKS.between(todayMonday, mondayOf(d))).toInt().coerceIn(0, WEEK_COUNT - 1)
+
+    // Beide Pager bleiben dauerhaft bestehen (nicht bei jedem Umschalten neu erzeugen) –
+    // der gerade unsichtbare wird per requestScrollToPage auf den Fokus-Tag gesetzt.
+    val dayPager = rememberPagerState(initialPage = dayPageOf(LocalDate.ofEpochDay(focusDate))) { PAGE_COUNT }
+    val weekPager = rememberPagerState(initialPage = weekPageOf(LocalDate.ofEpochDay(focusDate))) { WEEK_COUNT }
+    val pager = if (weekMode) weekPager else dayPager
+
+    fun syncPagersTo(date: LocalDate) {
+        focusDate = date.toEpochDay()
+        dayPager.requestScrollToPage(dayPageOf(date))
+        weekPager.requestScrollToPage(weekPageOf(date))
+    }
+    fun switchView(week: Boolean, date: LocalDate = LocalDate.ofEpochDay(focusDate)) {
+        syncPagersTo(date)
+        vm.setWeekView(week)
+    }
+    // Automatischer Sprung (z.B. auf "Morgen") oder Datumswechsel über Nacht
+    LaunchedEffect(jumpToken, today) {
+        if (jumpToken > 0 || dayPager.currentPage != dayPageOf(LocalDate.ofEpochDay(focusDate))) {
+            syncPagersTo(LocalDate.ofEpochDay(focusDate))
+        }
     }
 
     val selected = if (weekMode) {
@@ -181,12 +194,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
 
     fun goTo(date: LocalDate) {
         scope.launch {
-            val page = if (weekMode) {
-                (WEEK_CENTER + ChronoUnit.WEEKS.between(todayMonday, mondayOf(date))).toInt().coerceIn(0, WEEK_COUNT - 1)
-            } else {
-                (CENTER + ChronoUnit.DAYS.between(today, date)).toInt().coerceIn(0, PAGE_COUNT - 1)
-            }
-            pager.animateScrollToPage(page)
+            pager.animateScrollToPage(if (weekMode) weekPageOf(date) else dayPageOf(date))
         }
     }
 
@@ -217,7 +225,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
                     AnimatedVisibility(visible = !isAtToday) {
                         FilledTonalButton(onClick = { goTo(today) }) { Text("Heute") }
                     }
-                    IconButton(onClick = { vm.setWeekView(!state.weekView) }) {
+                    IconButton(onClick = { switchView(!state.weekView) }) {
                         Icon(
                             if (state.weekView) Icons.Rounded.ViewDay else Icons.Rounded.CalendarViewWeek,
                             contentDescription = if (state.weekView) "Tagesansicht" else "Wochenansicht",
@@ -268,8 +276,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
                             bottomPadding = padding.calculateBottomPadding(),
                             onClick = { detail = it },
                             onDayClick = { d ->
-                                focusDate = d.toEpochDay()
-                                vm.setWeekView(false)
+                                switchView(week = false, date = d)
                             },
                         )
                     }
