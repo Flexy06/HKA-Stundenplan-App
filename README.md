@@ -32,21 +32,10 @@ im selben Raum) werden zusammengefasst.
 
 Gebäude-Koordinaten: `data/Campus.kt` (bei Bedarf ergänzen).
 
-## Bauen
-In Android Studio öffnen → Run auf dem Pixel. Gleiche Gradle/AGP/Kotlin-Versionen wie VolleyHub.
-
 ## Installieren
 Neueste APK unter **[Releases](../../releases/latest)** herunterladen und auf dem Handy öffnen
 (einmalig „Installation aus unbekannten Quellen“ erlauben).
 
-## APK-Build über GitHub Actions
-Jeder Push auf `main` startet **Actions → Build APK** und veröffentlicht das APK als Release.
-Manuell: Actions → Build APK → „Run workflow“.
-
-Signierung (optional, für update-fähige APKs) über Repository-Secrets:
-`SIGNING_KEYSTORE_BASE64` (Keystore als Base64), `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
-Ohne Secrets wird mit einem Debug-Schlüssel signiert. Lokal: `signing/stundenplan.jks` + `signing/signing.properties`
-(beides per `.gitignore` ausgeschlossen).
 
 ## Lizenz & Daten
 - Code: MIT-Lizenz, siehe [LICENSE](LICENSE)
