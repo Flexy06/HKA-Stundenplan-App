@@ -7,7 +7,7 @@ eines Studiensemesters aus **Raumzeit** der Hochschule Karlsruhe anzeigt.
 Standard: `ELTB.1.A` – änderbar in den Einstellungen.
 
 ## Datenquelle
-Keine HTML-Scraperei: Raumzeit hat eine öffentliche REST-API ohne Login.
+Raumzeit hat eine öffentliche REST-API ohne Login.
 
 - `GET https://raumzeit.hka-iwi.de/api/v1/timetables/public/ELTB.1.A` mit `Accept: text/calendar`
   → iCal mit jedem Einzeltermin (Ausfälle schon entfernt, Verlegungen eingerechnet)
@@ -28,6 +28,7 @@ im selben Raum) werden zusammengefasst.
 - Ausfälle durchgestrichen (abschaltbar), Module ausblenden (z. B. fremde Laborgruppen)
 - Offline-Cache, Pull-to-Refresh, Auto-Refresh wenn Stand > 30 min alt
 - Dynamic Color (Material You)
+<<<<<<< HEAD
 
 Gebäude-Koordinaten: `data/Campus.kt` (bei Bedarf ergänzen).
 
@@ -51,3 +52,5 @@ Ohne Secrets wird mit einem Debug-Schlüssel signiert. Lokal: `signing/stundenpl
 - Code: MIT-Lizenz, siehe [LICENSE](LICENSE)
 - Stundenplandaten: öffentliche API von [Raumzeit](https://raumzeit.hka-iwi.de) der HKA
 - Kartendaten: © [OpenStreetMap](https://www.openstreetmap.org/copyright)-Mitwirkende, verfügbar unter der ODbL
+=======
+>>>>>>> 882a87d74ac1a9518b361accd081cd1b3aebe582
