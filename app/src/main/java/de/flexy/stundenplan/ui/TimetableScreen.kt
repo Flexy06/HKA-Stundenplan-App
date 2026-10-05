@@ -35,7 +35,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -129,6 +131,24 @@ fun TimetableScreen(vm: TimetableViewModel) {
     val openRoom: (RoomInfo, String?) -> Unit = { room, title ->
         vm.loadCampusMap()
         campusTarget = room to title
+    }
+
+    // Einmalig nach Benachrichtigungen fragen (für Änderungs-Hinweise, die standardmäßig an sind)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val notifPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            val prefs = context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+            val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!granted && !prefs.getBoolean("askedNotifications", false)) {
+                prefs.edit().putBoolean("askedNotifications", true).apply()
+                notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
     LaunchedEffect(state.error) {
@@ -318,7 +338,21 @@ fun TimetableScreen(vm: TimetableViewModel) {
     detail?.let { lecture ->
         LectureSheet(
             lecture = lecture,
-            upcoming = state.all.filter { it.title == lecture.title && !it.cancelled && it.end.isAfter(now) && it !== lecture }.take(6),
+            upcoming = state.visible.filter { it.title == lecture.title && !it.cancelled && it.end.isAfter(now) && it !== lecture }.take(6),
+            rhythm = state.rhythms[lecture.title] ?: de.flexy.stundenplan.data.Rhythm.WEEKLY,
+            onRhythm = { vm.setRhythm(lecture.title, it) },
+            onSkip = {
+                vm.setSkipped(lecture, true)
+                detail = null
+                scope.launch {
+                    val result = snackbar.showSnackbar(
+                        "„${lecture.title}“ am ${lecture.start.format(DateTimeFormatter.ofPattern("dd.MM."))} ausgeblendet",
+                        actionLabel = "Rückgängig",
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) vm.setSkipped(lecture, false)
+                }
+            },
             onRoomClick = { room ->
                 detail = null
                 openRoom(room, lecture.title)

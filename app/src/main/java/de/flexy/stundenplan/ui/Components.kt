@@ -75,6 +75,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.flexy.stundenplan.data.Lecture
+import de.flexy.stundenplan.data.LectureFilter
+import de.flexy.stundenplan.data.Rhythm
+import androidx.compose.foundation.layout.FlowRow
 import de.flexy.stundenplan.ui.theme.moduleColors
 import java.time.Duration
 import java.time.LocalDateTime
@@ -300,6 +303,9 @@ fun NextUpCard(lecture: Lecture, now: LocalDateTime, onClick: () -> Unit, onRoom
 fun LectureSheet(
     lecture: Lecture,
     upcoming: List<Lecture>,
+    rhythm: Rhythm,
+    onRhythm: (Rhythm) -> Unit,
+    onSkip: () -> Unit,
     onRoomClick: (RoomInfo) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -372,6 +378,9 @@ fun LectureSheet(
                         }
                     }
                 }
+            }
+            if (!lecture.cancelled) {
+                item { RhythmSection(lecture, rhythm, onRhythm, onSkip) }
             }
             if (upcoming.isNotEmpty()) {
                 item {
@@ -462,6 +471,7 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                     vm.setShowCancelled(it)
                 }
                 ReminderSettings(state.reminderMinutes, vm::setReminderMinutes)
+                DigestSettings(state.digestMode, vm::setDigestMode)
                 ChangeNotificationSetting(state.notifyChanges, vm::setNotifyChanges)
                 SwitchRow("Mensa-Speiseplan", "Essen der Mensa Moltke in der Mittagspause zeigen", state.showMensa) {
                     vm.setShowMensa(it)
@@ -483,11 +493,32 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                 ) {
                     Box(Modifier.size(12.dp).background(c.accent, RoundedCornerShape(50)))
                     Spacer(Modifier.width(12.dp))
-                    Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Column(Modifier.weight(1f)) {
+                        Text(title, style = MaterialTheme.typography.bodyLarge)
+                        state.rhythms[title]?.let { r ->
+                            Text(
+                                "Alle 2 Wochen · " + if (r == Rhythm.EVEN_WEEKS) "gerade KW" else "ungerade KW",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                     Switch(
                         checked = title !in state.hidden,
                         onCheckedChange = { vm.setModuleVisible(title, it) },
                     )
+                }
+            }
+            if (state.skipped.isNotEmpty()) {
+                item {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "${state.skipped.size} einzeln ausgeblendete${if (state.skipped.size == 1) "r Termin" else " Termine"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = vm::clearSkipped) { Text("Wieder einblenden") }
+                    }
                 }
             }
             item {
@@ -586,5 +617,88 @@ private fun ChangeNotificationSetting(checked: Boolean, onChange: (Boolean) -> U
         val needsPermission = on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         if (needsPermission) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else onChange(on)
+    }
+}
+
+@Composable
+private fun RhythmSection(lecture: Lecture, rhythm: Rhythm, onRhythm: (Rhythm) -> Unit, onSkip: () -> Unit) {
+    val withThis = LectureFilter.biweeklyFor(lecture, true)
+    val withoutThis = LectureFilter.biweeklyFor(lecture, false)
+    val kw = LectureFilter.weekOf(lecture.date)
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        Text("Wie oft hast du das?", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Raumzeit trägt z.B. Labore wöchentlich ein, auch wenn deine Gruppe nur alle 2 Wochen dran ist.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = rhythm == Rhythm.WEEKLY,
+                onClick = { onRhythm(Rhythm.WEEKLY) },
+                label = { Text("Jede Woche") },
+            )
+            FilterChip(
+                selected = rhythm == withThis,
+                onClick = { onRhythm(withThis) },
+                label = { Text("Alle 2 Wochen – mit diesem Termin") },
+            )
+            FilterChip(
+                selected = rhythm == withoutThis,
+                onClick = { onRhythm(withoutThis) },
+                label = { Text("Alle 2 Wochen – ohne diesen") },
+            )
+        }
+        if (rhythm != Rhythm.WEEKLY) {
+            val even = rhythm == Rhythm.EVEN_WEEKS
+            Text(
+                "Wird nur in ${if (even) "geraden" else "ungeraden"} Kalenderwochen angezeigt " +
+                    "(dieser Termin: KW $kw${if ((kw % 2 == 0) == even) "" else " – ausgeblendet"}). " +
+                    "Gilt für alle Termine von „${lecture.title}“.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        TextButton(onClick = onSkip, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+            Icon(Icons.Rounded.EventBusy, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Nur diesen einen Termin ausblenden")
+        }
+    }
+}
+
+@Composable
+private fun DigestSettings(current: Int, onChange: (Int) -> Unit) {
+    val context = LocalContext.current
+    var pending by remember { mutableStateOf(0) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) onChange(pending)
+    }
+    fun choose(mode: Int) {
+        val needsPermission = mode > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            pending = mode
+            permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            onChange(mode)
+        }
+    }
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Text("Tagesvorschau", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            "Überblick über alle Termine des Tages als Benachrichtigung",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = current == 0, onClick = { choose(0) }, label = { Text("Aus") })
+            FilterChip(selected = current == 1, onClick = { choose(1) }, label = { Text("Vorabend 20 Uhr") })
+            FilterChip(selected = current == 2, onClick = { choose(2) }, label = { Text("Morgens 7 Uhr") })
+        }
     }
 }

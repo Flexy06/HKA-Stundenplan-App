@@ -7,6 +7,8 @@ import de.flexy.stundenplan.data.CampusMapData
 import de.flexy.stundenplan.data.CampusMapRepository
 import de.flexy.stundenplan.data.ChangeDetector
 import de.flexy.stundenplan.data.Lecture
+import de.flexy.stundenplan.data.LectureFilter
+import de.flexy.stundenplan.data.Rhythm
 import de.flexy.stundenplan.data.MensaLine
 import de.flexy.stundenplan.data.MensaRepository
 import de.flexy.stundenplan.system.Reminders
@@ -23,6 +25,9 @@ data class UiState(
     val semester: String = TimetableRepository.DEFAULT_SEMESTER,
     val all: List<Lecture> = emptyList(),
     val hidden: Set<String> = emptySet(),
+    val rhythms: Map<String, Rhythm> = emptyMap(),
+    val skipped: Set<String> = emptySet(),
+    val digestMode: Int = 0,
     val showCancelled: Boolean = true,
     val refreshing: Boolean = false,
     val initialLoading: Boolean = true,
@@ -38,7 +43,8 @@ data class UiState(
     val notifyChanges: Boolean = true,
 ) {
     val visible: List<Lecture> by lazy {
-        all.filter { it.title !in hidden && (showCancelled || !it.cancelled) }
+        val f = LectureFilter(hidden, rhythms, skipped)
+        all.filter { f.shows(it) && (showCancelled || !it.cancelled) }
     }
 
     /** Alle Modulnamen (für die Ein-/Ausblenden-Liste). */
@@ -57,6 +63,9 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
         UiState(
             semester = repo.semester,
             hidden = repo.hiddenModules,
+            rhythms = repo.rhythms,
+            skipped = repo.skipped,
+            digestMode = repo.digestMode,
             showCancelled = repo.showCancelled,
             lastUpdated = repo.lastUpdated(repo.semester),
             reminderMinutes = repo.reminderMinutes,
@@ -101,7 +110,7 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
                 val fresh = repo.fetch(sem)
                 // Änderungen seit dem letzten Stand kurz als Hinweis zeigen
                 if (before.isNotEmpty() && _state.value.semester == sem) {
-                    val changes = ChangeDetector.diff(before, fresh, repo.hiddenModules, java.time.LocalDateTime.now())
+                    val changes = ChangeDetector.diff(before, fresh, repo.filter, java.time.LocalDateTime.now())
                     if (changes.isNotEmpty()) {
                         _state.update {
                             it.copy(error = if (changes.size == 1) changes.first().text else "${changes.size} Änderungen im Stundenplan – z.B. ${changes.first().text}")
@@ -147,6 +156,36 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
         onDataChanged()
     }
 
+    fun setRhythm(title: String, rhythm: Rhythm) {
+        val next = _state.value.rhythms.toMutableMap().apply {
+            if (rhythm == Rhythm.WEEKLY) remove(title) else put(title, rhythm)
+        }
+        repo.rhythms = next
+        _state.update { it.copy(rhythms = next) }
+        onDataChanged()
+    }
+
+    /** Einzelnen Termin aus-/wieder einblenden. */
+    fun setSkipped(lecture: Lecture, skip: Boolean) {
+        val k = LectureFilter.key(lecture)
+        val next = if (skip) _state.value.skipped + k else _state.value.skipped - k
+        repo.skipped = next
+        _state.update { it.copy(skipped = next) }
+        onDataChanged()
+    }
+
+    fun clearSkipped() {
+        repo.skipped = emptySet()
+        _state.update { it.copy(skipped = emptySet()) }
+        onDataChanged()
+    }
+
+    fun setDigestMode(mode: Int) {
+        repo.digestMode = mode
+        _state.update { it.copy(digestMode = mode) }
+        de.flexy.stundenplan.system.Digest.reschedule(getApplication())
+    }
+
     fun setShowCancelled(value: Boolean) {
         repo.showCancelled = value
         _state.update { it.copy(showCancelled = value) }
@@ -189,6 +228,7 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             runCatching { Reminders.reschedule(app) }
+            runCatching { de.flexy.stundenplan.system.Digest.reschedule(app) }
             runCatching { NextLectureWidget.updateAll(app) }
         }
     }

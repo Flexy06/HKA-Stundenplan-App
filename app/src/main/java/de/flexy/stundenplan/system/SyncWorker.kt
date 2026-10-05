@@ -44,7 +44,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             return if (runAttemptCount < 2) Result.retry() else Result.success()
         }
         if (old != null && repo.notifyChanges) {
-            val changes = ChangeDetector.diff(old, fresh, repo.hiddenModules, LocalDateTime.now())
+            val changes = ChangeDetector.diff(old, fresh, repo.filter, LocalDateTime.now())
             if (changes.isNotEmpty()) ChangeNotifier.notify(ctx, changes)
         }
         runCatching { Reminders.reschedule(ctx) }

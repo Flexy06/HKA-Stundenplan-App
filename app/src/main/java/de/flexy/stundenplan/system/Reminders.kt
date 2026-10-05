@@ -138,6 +138,7 @@ class ReminderReceiver : BroadcastReceiver() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Reminders.reschedule(context)
+        Digest.reschedule(context)
         NextLectureWidget.updateAll(context)
     }
 }

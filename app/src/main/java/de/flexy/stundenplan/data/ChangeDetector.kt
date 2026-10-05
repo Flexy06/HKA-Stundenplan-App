@@ -17,9 +17,9 @@ data class ScheduleChange(val kind: Kind, val lecture: Lecture, val text: String
 object ChangeDetector {
     private val WHEN = DateTimeFormatter.ofPattern("EE dd.MM. HH:mm", Locale.GERMAN)
 
-    fun diff(old: List<Lecture>, new: List<Lecture>, hidden: Set<String>, now: LocalDateTime): List<ScheduleChange> {
+    fun diff(old: List<Lecture>, new: List<Lecture>, filter: LectureFilter, now: LocalDateTime): List<ScheduleChange> {
         val until = now.plusWeeks(3)
-        fun relevant(l: Lecture) = l.title !in hidden && l.start.isAfter(now) && l.start.isBefore(until)
+        fun relevant(l: Lecture) = filter.shows(l) && l.start.isAfter(now) && l.start.isBefore(until)
         fun key(l: Lecture) = "${l.title}|${l.start}"
 
         val oldActive = old.filter { !it.cancelled && relevant(it) }.associateBy(::key)

@@ -31,6 +31,30 @@ class TimetableRepository(context: Context) {
         get() = prefs.getStringSet("hidden", emptySet())?.toSet() ?: emptySet()
         set(value) = prefs.edit().putStringSet("hidden", value).apply()
 
+    /** 14-tägiger Rhythmus pro Modul (gespeichert als "Titel\u0001EVEN_WEEKS"). */
+    var rhythms: Map<String, Rhythm>
+        get() = prefs.getStringSet("rhythms", emptySet()).orEmpty().mapNotNull { e ->
+            val title = e.substringBefore('\u0001')
+            val r = runCatching { Rhythm.valueOf(e.substringAfter('\u0001')) }.getOrNull()
+            if (r == null || r == Rhythm.WEEKLY) null else title to r
+        }.toMap()
+        set(value) = prefs.edit().putStringSet(
+            "rhythms",
+            value.filterValues { it != Rhythm.WEEKLY }.map { (t, r) -> "$t\u0001${r.name}" }.toSet(),
+        ).apply()
+
+    /** Einzeln ausgeblendete Termine ("Titel|Startzeit"). */
+    var skipped: Set<String>
+        get() = prefs.getStringSet("skipped", emptySet())?.toSet() ?: emptySet()
+        set(value) = prefs.edit().putStringSet("skipped", value).apply()
+
+    val filter: LectureFilter get() = LectureFilter(hiddenModules, rhythms, skipped)
+
+    /** Tagesvorschau: 0 = aus, 1 = am Vorabend (20 Uhr), 2 = morgens (7 Uhr). */
+    var digestMode: Int
+        get() = prefs.getInt("digestMode", 0)
+        set(value) = prefs.edit().putInt("digestMode", value).apply()
+
     var showCancelled: Boolean
         get() = prefs.getBoolean("showCancelled", true)
         set(value) = prefs.edit().putBoolean("showCancelled", value).apply()
@@ -70,8 +94,8 @@ class TimetableRepository(context: Context) {
 
     /** Termine, die tatsächlich stattfinden und nicht ausgeblendet sind. */
     fun upcomingActive(now: java.time.LocalDateTime = java.time.LocalDateTime.now()): List<Lecture> {
-        val hidden = hiddenModules
-        return loadCachedSync().orEmpty().filter { !it.cancelled && it.title !in hidden && it.end.isAfter(now) }
+        val f = filter
+        return loadCachedSync().orEmpty().filter { !it.cancelled && f.shows(it) && it.end.isAfter(now) }
     }
 
     /** Frisch vom Server laden und Cache aktualisieren. */

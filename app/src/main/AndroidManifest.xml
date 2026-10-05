@@ -50,6 +50,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".system.DigestReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".system.BootReceiver"
             android:exported="true">
             <intent-filter>

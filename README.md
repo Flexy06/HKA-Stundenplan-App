@@ -24,8 +24,11 @@ Voraussetzung: Android 8.0 oder neuer.
 - **Widget** für den Homescreen mit deinen nächsten Terminen
 - **Mensa-Speiseplan** der Mensa Moltke direkt in der Mittagspause – mit Preisen und vegan/vegetarisch-Kennzeichnung
 - **Änderungs-Hinweise**: Benachrichtigung, wenn eine Vorlesung ausfällt, verlegt wird oder den Raum wechselt
+- **Tagesvorschau** am Vorabend oder morgens: alle Termine des Tages auf einen Blick
 - **Ausfälle** werden durchgestrichen angezeigt
 - **Module ausblenden**, die dich nicht betreffen (z. B. andere Laborgruppen)
+- **14-tägige Termine**: Labore, die du nur jede zweite Woche hast, auf „Alle 2 Wochen“ stellen –
+  oder einzelne Termine ausblenden (Termin antippen)
 - Funktioniert auch **offline** mit dem zuletzt geladenen Stand; nach unten ziehen zum Aktualisieren
 
 ## Datenschutz
