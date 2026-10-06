@@ -126,7 +126,7 @@ fun CampusMapScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     when {
-                        map != null && building.onMainCampus -> CampusCanvas(map, building.code, building.lat, building.lon)
+                        map != null && building.onMainCampus -> CampusCanvas(map, building.code, building.lat, building.lon, room.spot)
                         map != null -> OffCampusHint(room)
                         loading -> Box(contentAlignment = Alignment.Center) {
                             ContainedLoadingIndicator(Modifier.size(64.dp))
@@ -166,7 +166,7 @@ fun CampusMapScreen(
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
-                        onClick = { Navigation.start(context, building, Navigation.Mode.BIKE) },
+                        onClick = { Navigation.start(context, room, Navigation.Mode.BIKE) },
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(Icons.AutoMirrored.Rounded.DirectionsBike, null, Modifier.size(18.dp))
@@ -174,7 +174,7 @@ fun CampusMapScreen(
                         Text("Mit dem Rad")
                     }
                     FilledTonalButton(
-                        onClick = { Navigation.start(context, building, Navigation.Mode.WALK) },
+                        onClick = { Navigation.start(context, room, Navigation.Mode.WALK) },
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(Icons.AutoMirrored.Rounded.DirectionsWalk, null, Modifier.size(18.dp))
@@ -234,13 +234,13 @@ private fun centroid(b: MapBuilding): GeoPoint? {
 private fun label(b: MapBuilding): String? = b.name.takeIf { b.isHka && it.isNotEmpty() }
 
 @Composable
-private fun CampusCanvas(map: CampusMapData, targetCode: String, targetLat: Double, targetLon: Double) {
+private fun CampusCanvas(map: CampusMapData, targetCode: String, targetLat: Double, targetLon: Double, spot: GeoPoint? = null) {
     val cs = MaterialTheme.colorScheme
     val proj = remember { Projection(Campus.CENTER_LAT, Campus.CENTER_LON) }
     val measurer = rememberTextMeasurer()
 
     val target = remember(map, targetCode) { map.buildings.firstOrNull { it.isHka && it.name == targetCode } }
-    val targetCenter = remember(target) { target?.let(::centroid) ?: GeoPoint(targetLat, targetLon) }
+    val targetCenter = remember(target, spot) { spot ?: target?.let(::centroid) ?: GeoPoint(targetLat, targetLon) }
 
     var size by remember { mutableStateOf(IntSize.Zero) }
     var scale by remember { mutableFloatStateOf(0f) } // px pro Meter; 0 = noch nicht initialisiert
@@ -249,7 +249,7 @@ private fun CampusCanvas(map: CampusMapData, targetCode: String, targetLat: Doub
     fun focusTarget() {
         if (size.width == 0) return
         // ca. 260 m Breite sichtbar, Ziel mittig
-        scale = size.width / 260f
+        scale = size.width / (if (spot != null) 160f else 260f)
         offset = Offset(
             size.width / 2f - proj.x(targetCenter) * scale,
             size.height / 2f - proj.y(targetCenter) * scale,

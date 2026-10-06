@@ -101,7 +101,7 @@ object Reminders {
             Campus.parseRooms(l.location).firstOrNull()?.let { room ->
                 val nav = PendingIntent.getActivity(
                     context, l.id.hashCode(),
-                    Navigation.intent(room.building, Navigation.Mode.WALK),
+                    Navigation.intent(room, Navigation.Mode.WALK),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
                 builder.addAction(0, "Navigation zu ${room.building.code}", nav)

@@ -369,7 +369,7 @@ fun LectureSheet(
                             Text("Campuskarte")
                         }
                         FilledTonalButton(
-                            onClick = { Navigation.start(context, room.building, Navigation.Mode.BIKE) },
+                            onClick = { Navigation.start(context, room, Navigation.Mode.BIKE) },
                             modifier = Modifier.weight(1f),
                         ) {
                             Icon(Icons.Rounded.Navigation, null, Modifier.size(18.dp))

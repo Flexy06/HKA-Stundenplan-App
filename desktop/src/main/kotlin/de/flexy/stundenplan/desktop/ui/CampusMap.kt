@@ -71,8 +71,8 @@ import de.flexy.stundenplan.data.MapBuilding
 import de.flexy.stundenplan.data.RoomInfo
 import kotlin.math.cos
 
-private fun mapsRoute(b: Building, mode: String) =
-    "https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lon}&travelmode=$mode"
+private fun mapsRoute(room: RoomInfo, mode: String) =
+    "https://www.google.com/maps/dir/?api=1&destination=${room.target.lat},${room.target.lon}&travelmode=$mode"
 
 /** Campuskarte als Overlay über dem Fenster (Esc/Klick daneben schließt). */
 @Composable
@@ -109,7 +109,7 @@ fun CampusMapOverlay(room: RoomInfo, lectureTitle: String?, map: CampusMapData, 
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 ) {
                     if (building.onMainCampus) {
-                        CampusCanvas(map, building.code, building.lat, building.lon)
+                        CampusCanvas(map, building.code, building.lat, building.lon, room.spot)
                     } else {
                         Box(contentAlignment = Alignment.Center) {
                             Text("${building.name} liegt außerhalb des Campus Moltkestraße – nutze die Route.",
@@ -119,12 +119,12 @@ fun CampusMapOverlay(room: RoomInfo, lectureTitle: String?, map: CampusMapData, 
                 }
                 Spacer(Modifier.size(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Button(onClick = { openUrl(mapsRoute(building, "bicycling")) }) {
+                    Button(onClick = { openUrl(mapsRoute(room, "bicycling")) }) {
                         Icon(Icons.AutoMirrored.Rounded.DirectionsBike, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Route mit dem Rad")
                     }
-                    FilledTonalButton(onClick = { openUrl(mapsRoute(building, "walking")) }) {
+                    FilledTonalButton(onClick = { openUrl(mapsRoute(room, "walking")) }) {
                         Icon(Icons.AutoMirrored.Rounded.DirectionsWalk, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Zu Fuß")
@@ -160,13 +160,13 @@ private fun centroid(b: MapBuilding): GeoPoint? {
 private fun label(b: MapBuilding): String? = b.name.takeIf { b.isHka && it.isNotEmpty() }
 
 @Composable
-internal fun CampusCanvas(map: CampusMapData, targetCode: String, targetLat: Double, targetLon: Double) {
+internal fun CampusCanvas(map: CampusMapData, targetCode: String, targetLat: Double, targetLon: Double, spot: GeoPoint? = null) {
     val cs = MaterialTheme.colorScheme
     val proj = remember { Projection(Campus.CENTER_LAT, Campus.CENTER_LON) }
     val measurer = rememberTextMeasurer()
 
     val target = remember(map, targetCode) { map.buildings.firstOrNull { it.isHka && it.name == targetCode } }
-    val targetCenter = remember(target) { target?.let(::centroid) ?: GeoPoint(targetLat, targetLon) }
+    val targetCenter = remember(target, spot) { spot ?: target?.let(::centroid) ?: GeoPoint(targetLat, targetLon) }
 
     var size by remember { mutableStateOf(IntSize.Zero) }
     var scale by remember { mutableFloatStateOf(0f) } // px pro Meter; 0 = noch nicht initialisiert
@@ -175,7 +175,7 @@ internal fun CampusCanvas(map: CampusMapData, targetCode: String, targetLat: Dou
     fun focusTarget() {
         if (size.width == 0) return
         // ca. 260 m Breite sichtbar, Ziel mittig
-        scale = size.width / 260f
+        scale = size.width / (if (spot != null) 160f else 260f)
         offset = Offset(
             size.width / 2f - proj.x(targetCenter) * scale,
             size.height / 2f - proj.y(targetCenter) * scale,

@@ -15,7 +15,12 @@ data class RoomInfo(
     val building: Building,
     val room: String,
     val floor: String?,
+    /** Genaue Lage des Raums, falls bekannt (sonst null → Gebäudemitte). */
+    val spot: GeoPoint? = null,
 ) {
+    /** Ziel für Karte und Route: Raum, falls bekannt, sonst das Gebäude. */
+    val target: GeoPoint get() = spot ?: GeoPoint(building.lat, building.lon)
+
     val title: String get() = raw
     val subtitle: String
         get() = listOfNotNull(building.name, floor).joinToString(" · ")
@@ -70,6 +75,6 @@ object Campus {
             }
             else -> null
         }
-        return RoomInfo(raw.trim(), building, room, floor)
+        return RoomInfo(raw.trim(), building, room, floor, RoomSpots.find(building.code, room))
     }
 }
