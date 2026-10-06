@@ -344,10 +344,16 @@ private fun CampusCanvas(map: CampusMapData, targetCode: String, targetLat: Doub
             // Pin am Ziel
             val center = pt(targetCenter)
             val pinY = center.y - 34.dp.toPx()
-            drawCircle(cs.primary.copy(alpha = (1f - pulse) * 0.35f), radius = (10 + 26 * pulse).dp.toPx(), center = center)
-            drawLine(cs.primary, Offset(center.x, pinY), center, strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
-            drawCircle(cs.primary, radius = 13.dp.toPx(), center = Offset(center.x, pinY))
-            drawCircle(cs.onPrimary, radius = 5.dp.toPx(), center = Offset(center.x, pinY))
+            // Roter Pin mit weißem Rand – hebt sich vom hervorgehobenen Gebäude ab
+            val pinColor = Color(0xFFE53935)
+            drawCircle(pinColor.copy(alpha = (1f - pulse) * 0.45f), radius = (8 + 22 * pulse).dp.toPx(), center = center)
+            drawCircle(Color.White, radius = 5.dp.toPx(), center = center)
+            drawCircle(pinColor, radius = 3.5f.dp.toPx(), center = center)
+            drawLine(Color.White, Offset(center.x, pinY), center, strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round)
+            drawLine(pinColor, Offset(center.x, pinY), center, strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
+            drawCircle(Color.White, radius = 15.dp.toPx(), center = Offset(center.x, pinY))
+            drawCircle(pinColor, radius = 13.dp.toPx(), center = Offset(center.x, pinY))
+            drawCircle(Color.White, radius = 5.dp.toPx(), center = Offset(center.x, pinY))
         }
 
         // Zurück zum Ziel
