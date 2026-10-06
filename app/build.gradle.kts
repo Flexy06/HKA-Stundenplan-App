@@ -62,6 +62,8 @@ android {
     buildFeatures {
         compose = true
     }
+    // Plattformunabhängige Logik, gemeinsam mit der Windows-App (desktop/)
+    sourceSets["main"].java.srcDir("../shared/src")
 }
 
 kotlin {

@@ -14,6 +14,16 @@ Studiensemester stellst du in den Einstellungen ein.
 
 Voraussetzung: Android 8.0 oder neuer.
 
+### Windows
+Unter **[Releases](../../releases/latest)** gibt es auch eine Windows-Version:
+- `HKA-Stundenplan-….msi` herunterladen und installieren (ohne Admin-Rechte), **oder**
+- die `…-portable.zip` entpacken und `HKA Stundenplan.exe` starten.
+
+Die Windows-App zeigt Woche/Tag mit Seitenleiste (nächster Termin, Mensa, Details),
+läuft beim Schließen im Infobereich weiter und meldet sich mit Windows-Benachrichtigungen
+vor Vorlesungen und bei Änderungen. Auf Wunsch startet sie automatisch mit Windows.
+Bedienung: ←/→ blättern, Strg+T heute, F5 aktualisieren, Esc schließt Overlays.
+
 ## Funktionen
 - **Tages- und Wochenansicht** – oben rechts umschalten, zwischen Tagen/Wochen wischen
 - **„Als Nächstes“** zeigt die nächste Vorlesung mit Countdown; laufende Vorlesungen mit Fortschrittsbalken

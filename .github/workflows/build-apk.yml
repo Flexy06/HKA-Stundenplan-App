@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK & Windows
 
 on:
   push:
@@ -9,16 +9,17 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-apk-${{ github.ref }}
+  group: build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  android:
+    name: Android (APK)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -53,7 +54,7 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon :app:assembleRelease
 
       - name: Schlüssel wieder löschen
         if: always()
@@ -66,16 +67,58 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Stundenplan-1.0.${{ github.run_number }}
+          name: android
           path: out/*.apk
 
-      - name: Release mit APK veröffentlichen
+  windows:
+    name: Windows (MSI + ZIP)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Windows-App bauen
+        shell: bash
+        run: ./gradlew --no-daemon :desktop:packageMsi :desktop:createDistributable
+
+      - name: Dateien einsammeln
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          $msi = Get-ChildItem desktop/build/compose/binaries/main/msi/*.msi | Select-Object -First 1
+          Copy-Item $msi.FullName "out/HKA-Stundenplan-1.0.${{ github.run_number }}.msi"
+          Compress-Archive -Path "desktop/build/compose/binaries/main/app/HKA Stundenplan/*" -DestinationPath "out/HKA-Stundenplan-1.0.${{ github.run_number }}-portable.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: out/*
+
+  release:
+    name: Release veröffentlichen
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Release mit APK & Windows-Installer
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Stundenplan 1.0.${{ github.run_number }}
           body: |
+            **Android:** `Stundenplan-1.0.${{ github.run_number }}.apk` aufs Handy laden und installieren.
+            **Windows:** `HKA-Stundenplan-…msi` installieren (kein Admin nötig) – oder die `-portable.zip` entpacken und `HKA Stundenplan.exe` starten.
+
             Automatischer Build von `${{ github.sha }}`.
-            APK aufs Handy laden und installieren.
-          files: out/*.apk
+          files: dist/*
           make_latest: true
