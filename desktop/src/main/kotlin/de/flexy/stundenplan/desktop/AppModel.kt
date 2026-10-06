@@ -179,6 +179,44 @@ class AppModel(private val scope: CoroutineScope, private val notify: (title: St
     fun setReminderMinutes(v: Int) = updateSettings { it.copy(reminderMinutes = v) }
     fun setNotifyChanges(v: Boolean) = updateSettings { it.copy(notifyChanges = v) }
 
+    fun setThemeMode(v: String) = updateSettings { it.copy(themeMode = v) }
+    fun setMiniWindow(v: Boolean) = updateSettings { it.copy(miniWindow = v) }
+
+    fun saveWindow(x: Int, y: Int, w: Int, h: Int, maximized: Boolean) {
+        val s = _state.value.settings
+        if (maximized) {
+            if (!s.winMax) updateSettings { it.copy(winMax = true) }
+        } else if (s.winMax || s.winX != x || s.winY != y || s.winW != w || s.winH != h) {
+            updateSettings { it.copy(winX = x, winY = y, winW = w, winH = h, winMax = false) }
+        }
+    }
+
+    fun saveMiniPosition(x: Int, y: Int) {
+        val s = _state.value.settings
+        if (s.miniX != x || s.miniY != y) updateSettings { it.copy(miniX = x, miniY = y) }
+    }
+
+    /** Schreibt die sichtbaren (gefilterten) Termine als .ics in den Downloads-Ordner. */
+    fun exportIcs(): java.io.File? {
+        val s = _state.value
+        val lectures = s.visible.filter { !it.cancelled }
+        if (lectures.isEmpty()) {
+            _state.update { it.copy(message = "Keine Termine zum Exportieren.") }
+            return null
+        }
+        return runCatching {
+            val home = java.io.File(System.getProperty("user.home"))
+            val dir = java.io.File(home, "Downloads").takeIf { it.isDirectory } ?: home
+            val file = java.io.File(dir, "Stundenplan-${s.settings.semester.replace(Regex("[^A-Za-z0-9._-]"), "_")}.ics")
+            file.writeText(IcsExport.build(lectures, s.settings.semester), Charsets.UTF_8)
+            _state.update { it.copy(message = "${lectures.size} Termine exportiert: ${file.absolutePath}") }
+            file
+        }.getOrElse { e ->
+            _state.update { it.copy(message = "Export fehlgeschlagen: ${e.message}") }
+            null
+        }
+    }
+
     fun setShowMensa(v: Boolean) {
         updateSettings { it.copy(showMensa = v) }
         if (v) loadMensa()

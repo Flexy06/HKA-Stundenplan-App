@@ -22,7 +22,15 @@ Unter **[Releases](../../releases/latest)** gibt es auch eine Windows-Version:
 Die Windows-App zeigt Woche/Tag mit Seitenleiste (nächster Termin, Mensa, Details),
 läuft beim Schließen im Infobereich weiter und meldet sich mit Windows-Benachrichtigungen
 vor Vorlesungen und bei Änderungen. Auf Wunsch startet sie automatisch mit Windows.
-Bedienung: ←/→ blättern, Strg+T heute, F5 aktualisieren, Esc schließt Overlays.
+
+- **Mini-Fenster** (Strg+M oder Rechtsklick aufs Tray-Symbol): kleines Fenster immer im
+  Vordergrund mit laufender Vorlesung (Restzeit) und der nächsten.
+- **Tray-Tooltip** zeigt beim Drüberfahren die nächste Vorlesung mit Raum.
+- **Hell/Dunkel/wie Windows** in den Einstellungen umschaltbar.
+- **Kalender-Export**: gefilterten Plan als `.ics` für Outlook, Google oder Apple Kalender speichern.
+- Fenstergröße und -position werden gemerkt.
+
+Bedienung: ←/→ blättern, Strg+T heute, F5 aktualisieren, Strg+M Mini-Fenster, Esc schließt Overlays.
 
 ## Funktionen
 - **Tages- und Wochenansicht** – oben rechts umschalten, zwischen Tagen/Wochen wischen

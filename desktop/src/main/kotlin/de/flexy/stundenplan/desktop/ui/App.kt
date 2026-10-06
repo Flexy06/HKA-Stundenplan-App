@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
@@ -31,6 +33,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -118,10 +121,16 @@ fun App(model: AppModel, nav: NavController) {
     nav.typing = { showSettings }
     val openRoom: (RoomInfo, String?) -> Unit = { room, title -> campus = room to title }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+    // Surface setzt die Textfarbe (onSurface) – sonst wäre Text im Dunkelmodus schwarz
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxSize(),
+    ) { Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopBar(state, focus, week, onStep = nav.step, onToday = nav.today,
-                onWeek = model::setWeekView, onRefresh = { model.refresh() }, onSettings = { showSettings = true })
+                onWeek = model::setWeekView, onRefresh = { model.refresh() }, onSettings = { showSettings = true },
+                onMini = { model.setMiniWindow(!state.settings.miniWindow) })
             HorizontalDivider()
             Row(Modifier.weight(1f)) {
                 Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -185,7 +194,7 @@ fun App(model: AppModel, nav: NavController) {
 
         if (showSettings) SettingsOverlay(state, model, onClose = { showSettings = false })
         campus?.let { (room, title) -> CampusMapOverlay(room, title, Repository.campusMap, onClose = { campus = null }) }
-    }
+    } }
 }
 
 @Composable
@@ -198,6 +207,7 @@ private fun TopBar(
     onWeek: (Boolean) -> Unit,
     onRefresh: () -> Unit,
     onSettings: () -> Unit,
+    onMini: () -> Unit,
 ) {
     val monday = mondayOf(focus)
     val label = if (week) {
@@ -230,6 +240,10 @@ private fun TopBar(
         Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
             if (state.refreshing) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
             else IconButton(onClick = onRefresh) { Icon(Icons.Rounded.Refresh, "Aktualisieren") }
+        }
+        IconButton(onClick = onMini) {
+            Icon(Icons.Rounded.PictureInPictureAlt, if (state.settings.miniWindow) "Mini-Fenster schließen" else "Mini-Fenster (immer im Vordergrund)",
+                tint = if (state.settings.miniWindow) MaterialTheme.colorScheme.primary else LocalContentColor.current)
         }
         IconButton(onClick = onSettings) { Icon(Icons.Rounded.Tune, "Einstellungen") }
     }
@@ -294,6 +308,22 @@ private fun SettingsOverlay(state: UiState, model: AppModel, onClose: () -> Unit
                         ) { Text("Laden") }
                     }
                     Spacer(Modifier.height(8.dp))
+                    Column(Modifier.padding(vertical = 8.dp)) {
+                        Text("Darstellung", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(6.dp))
+                        val modes = listOf("system" to "Wie Windows", "light" to "Hell", "dark" to "Dunkel")
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            modes.forEachIndexed { i, (key, label) ->
+                                SegmentedButton(
+                                    selected = s.themeMode == key,
+                                    onClick = { model.setThemeMode(key) },
+                                    shape = SegmentedButtonDefaults.itemShape(i, modes.size),
+                                ) { Text(label) }
+                            }
+                        }
+                    }
+                    SwitchRow("Mini-Fenster", "Kleines Fenster mit laufender und nächster Vorlesung, immer im Vordergrund (Strg+M)",
+                        s.miniWindow, model::setMiniWindow)
                     SwitchRow("Ausfälle anzeigen", "Abgesagte Termine durchgestrichen zeigen", s.showCancelled, model::setShowCancelled)
                     SwitchRow("Mensa-Speiseplan", "Essen der Mensa Moltke anzeigen", s.showMensa, model::setShowMensa)
                     SwitchRow("Bei Änderungen benachrichtigen", "Ausfälle, Raumänderungen, Verlegungen (Abgleich alle 3 h)", s.notifyChanges, model::setNotifyChanges)
@@ -344,6 +374,21 @@ private fun SettingsOverlay(state: UiState, model: AppModel, onClose: () -> Unit
                         }
                     }
                     HorizontalDivider(Modifier.padding(vertical = 12.dp))
+                    Text("Kalender-Export", style = MaterialTheme.typography.titleMedium)
+                    Text("Speichert deinen gefilterten Stundenplan als .ics-Datei im Downloads-Ordner – zum Import in Outlook, Google Kalender oder Apple Kalender.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    FilledTonalButton(onClick = { model.exportIcs()?.let { showInExplorer(it) } }) {
+                        Icon(Icons.Rounded.Event, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Als .ics exportieren")
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 12.dp))
+                    Text(
+                        "Tastenkürzel: ←/→ blättern · Strg+T heute · Strg+R/F5 aktualisieren · Strg+M Mini-Fenster · Esc schließen",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "Daten: raumzeit.hka-iwi.de · Mensa: sw-ka.de · Karte: © OpenStreetMap-Mitwirkende\n" +
                             "Inoffizielle Open-Source-App – kein Angebot der Hochschule Karlsruhe.",
@@ -351,6 +396,17 @@ private fun SettingsOverlay(state: UiState, model: AppModel, onClose: () -> Unit
                     )
                 }
             }
+        }
+    }
+}
+
+/** Öffnet den Explorer mit markierter Datei (Windows), sonst den Ordner. */
+private fun showInExplorer(file: java.io.File) {
+    runCatching {
+        if (System.getProperty("os.name").lowercase().contains("win")) {
+            ProcessBuilder("explorer.exe", "/select,", file.absolutePath).start()
+        } else {
+            java.awt.Desktop.getDesktop().open(file.parentFile)
         }
     }
 }

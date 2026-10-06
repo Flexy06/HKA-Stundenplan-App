@@ -28,6 +28,18 @@ data class Settings(
     val notifyChanges: Boolean = true,
     val autostart: Boolean = false,
     val lastUpdated: Long = 0L,
+    /** "system", "light" oder "dark" */
+    val themeMode: String = "system",
+    /** kleines „Als Nächstes“-Fenster immer im Vordergrund */
+    val miniWindow: Boolean = false,
+    /** zuletzt benutzte Fenstergröße/-position (0 = noch nie gespeichert) */
+    val winX: Int = 0,
+    val winY: Int = 0,
+    val winW: Int = 0,
+    val winH: Int = 0,
+    val winMax: Boolean = false,
+    val miniX: Int = -1,
+    val miniY: Int = -1,
 )
 
 /** Speichert die Einstellungen als JSON-Datei. */
@@ -54,6 +66,15 @@ object SettingsStore {
                 notifyChanges = o.optBoolean("notifyChanges", true),
                 autostart = o.optBoolean("autostart", false),
                 lastUpdated = o.optLong("lastUpdated", 0L),
+                themeMode = o.optString("themeMode", "system"),
+                miniWindow = o.optBoolean("miniWindow", false),
+                winX = o.optInt("winX", 0),
+                winY = o.optInt("winY", 0),
+                winW = o.optInt("winW", 0),
+                winH = o.optInt("winH", 0),
+                winMax = o.optBoolean("winMax", false),
+                miniX = o.optInt("miniX", -1),
+                miniY = o.optInt("miniY", -1),
             )
         }.getOrDefault(Settings())
     }
@@ -71,6 +92,11 @@ object SettingsStore {
             .put("notifyChanges", s.notifyChanges)
             .put("autostart", s.autostart)
             .put("lastUpdated", s.lastUpdated)
+            .put("themeMode", s.themeMode)
+            .put("miniWindow", s.miniWindow)
+            .put("winX", s.winX).put("winY", s.winY).put("winW", s.winW).put("winH", s.winH)
+            .put("winMax", s.winMax)
+            .put("miniX", s.miniX).put("miniY", s.miniY)
         runCatching { file.writeText(o.toString(2)) }
     }
 
