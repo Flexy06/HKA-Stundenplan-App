@@ -11,10 +11,16 @@ object RoomSpots {
         "N-002" to GeoPoint(49.016730, 8.390128), // Südwest-Ecke
         "N-012" to GeoPoint(49.016996, 8.390516), // Nordost-Ecke
         "N-013" to GeoPoint(49.016734, 8.390488), // Südost-Ecke
-        // Gebäude LI
-        "LI-HE" to GeoPoint(49.014983, 8.389451), // Hörsaal Elektrotechnik, Südende
+        // Gebäude N, 2. OG
+        "N-214" to GeoPoint(49.016746, 8.390532), // Ostseite, südlicher Teil
     )
 
-    fun find(buildingCode: String, room: String): GeoPoint? =
-        spots["${buildingCode.uppercase()}-${room.trim().uppercase()}"]
+    /** Hörsaal Elektrotechnik (HE) im Südteil von Gebäude LI. */
+    val HE = GeoPoint(49.014957, 8.389391)
+
+    fun find(buildingCode: String, room: String): GeoPoint? {
+        val r = room.trim().uppercase()
+        if (r == "HE") return HE
+        return spots["${buildingCode.uppercase()}-$r"]
+    }
 }

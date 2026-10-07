@@ -62,7 +62,14 @@ object Campus {
             .filter { it.isNotEmpty() }
             .mapNotNull(::parseRoom)
 
+    /** "HE", "LI-HE", "Hörsaal HE", "Hörsaal Elektrotechnik" → immer der Hörsaal in Gebäude LI. */
+    private val HE_PATTERN = Regex("^(LI\\s*-?\\s*)?((H(Ö|ö|OE|O)RSAAL\\s*)?HE|H(Ö|ö|OE|O)RSAAL\\s+ELEKTROTECHNIK)\\b.*", RegexOption.IGNORE_CASE)
+
     fun parseRoom(raw: String): RoomInfo? {
+        val t = raw.trim()
+        if (HE_PATTERN.matches(t)) {
+            return RoomInfo(t, buildings.getValue("LI"), "HE", SPECIAL_ROOMS["HE"], RoomSpots.HE)
+        }
         val m = Regex("^([A-Za-z]{1,3})\\s*-\\s*(.+)$").find(raw.trim()) ?: return null
         val building = buildings[m.groupValues[1].uppercase()] ?: return null
         val room = m.groupValues[2].trim()
