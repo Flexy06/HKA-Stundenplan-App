@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import de.flexy.stundenplan.data.Campus
 import de.flexy.stundenplan.data.RoomInfo
+import de.flexy.stundenplan.system.CalendarExport
 import de.flexy.stundenplan.system.Navigation
 import de.flexy.stundenplan.system.Reminders
 import androidx.compose.foundation.background
@@ -44,6 +45,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.EventBusy
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -94,6 +97,7 @@ fun LectureCard(
     now: LocalDateTime,
     onClick: () -> Unit,
     onRoomClick: (RoomInfo) -> Unit,
+    conflict: Boolean = false,
 ) {
     val colors = moduleColors(lecture.title)
     val cs = MaterialTheme.colorScheme
@@ -158,6 +162,10 @@ fun LectureCard(
                     }
                     if (lecture.cancelled) {
                         StatusChip("Entfällt", cs.errorContainer, cs.onErrorContainer, Icons.Rounded.EventBusy)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    if (conflict && !lecture.cancelled) {
+                        StatusChip("Überschneidung", cs.errorContainer, cs.onErrorContainer, Icons.Rounded.Warning)
                         Spacer(Modifier.height(8.dp))
                     }
                     Text(
@@ -475,6 +483,17 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                 ChangeNotificationSetting(state.notifyChanges, vm::setNotifyChanges)
                 SwitchRow("Mensa-Speiseplan", "Essen der Mensa Moltke in der Mittagspause zeigen", state.showMensa) {
                     vm.setShowMensa(it)
+                }
+                val context = LocalContext.current
+                val exportable = remember(state.visible) { state.visible.filter { !it.cancelled } }
+                TextButton(
+                    onClick = { CalendarExport.share(context, exportable, state.semester) },
+                    enabled = exportable.isNotEmpty(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                ) {
+                    Icon(Icons.Rounded.Share, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Als Kalenderdatei (.ics) exportieren")
                 }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Text("Module", style = MaterialTheme.typography.titleMedium)

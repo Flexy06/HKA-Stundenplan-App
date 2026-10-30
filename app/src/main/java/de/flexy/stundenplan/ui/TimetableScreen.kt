@@ -480,6 +480,7 @@ private fun DayPage(
 ) {
     val rows = remember(lectures, mensa != null) { buildRows(lectures, mensa != null) }
     val active = lectures.filter { !it.cancelled }
+    val conflicts = remember(lectures) { de.flexy.stundenplan.data.ScheduleInsights.conflicts(lectures) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -518,6 +519,7 @@ private fun DayPage(
                         r.lecture, now,
                         onClick = { onClick(r.lecture) },
                         onRoomClick = { room -> onRoomClick(room, r.lecture.title) },
+                        conflict = r.lecture in conflicts,
                     )
                     is Row_.Gap -> GapRow(r.minutes)
                     Row_.Mensa -> if (mensa != null) MensaCard(mensa)

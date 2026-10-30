@@ -47,6 +47,11 @@ jobs:
             echo "::warning::Kein SIGNING_KEYSTORE_BASE64-Secret – APK wird mit Debug-Schlüssel signiert."
           fi
 
+      - name: Unit-Tests
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:testDebugUnitTest
+
       - name: APK bauen
         env:
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}

@@ -1,18 +1,18 @@
-package de.flexy.stundenplan.desktop
+package de.flexy.stundenplan.data
 
-import de.flexy.stundenplan.data.Lecture
-import de.flexy.stundenplan.data.LectureFilter
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-/** Erzeugt eine iCalendar-Datei (RFC 5545) für Outlook, Google Kalender & Co. */
+/** Erzeugt eine iCalendar-Datei (RFC 5545) für Outlook, Google Kalender & Co. – gemeinsam für Android und Windows. */
 object IcsExport {
     private val zone = ZoneId.of("Europe/Berlin")
     private val utc = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
 
     fun build(lectures: List<Lecture>, semester: String): String {
+        // Ausgefallene Termine gehören nicht in den Kalender
+        val lectures = lectures.filter { !it.cancelled }
         val stamp = ZonedDateTime.now(ZoneOffset.UTC).format(utc)
         val sb = StringBuilder()
         sb.line("BEGIN:VCALENDAR")

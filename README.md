@@ -44,6 +44,8 @@ Bedienung: ←/→ blättern, Strg+T heute, F5 aktualisieren, Strg+M Mini-Fenste
 - **Änderungs-Hinweise**: Benachrichtigung, wenn eine Vorlesung ausfällt, verlegt wird oder den Raum wechselt
 - **Tagesvorschau** am Vorabend oder morgens: alle Termine des Tages auf einen Blick
 - **Ausfälle** werden durchgestrichen angezeigt
+- **Überschneidungen** zweier Termine werden markiert (z. B. parallele Laborgruppen)
+- **Kalender-Export**: Stundenplan als `.ics` teilen (Einstellungen) – für Google, Outlook oder Apple Kalender
 - **Module ausblenden**, die dich nicht betreffen (z. B. andere Laborgruppen)
 - **14-tägige Termine**: Labore, die du nur jede zweite Woche hast, auf „Alle 2 Wochen“ stellen –
   oder einzelne Termine ausblenden (Termin antippen)

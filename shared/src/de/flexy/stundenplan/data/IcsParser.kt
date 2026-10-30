@@ -86,4 +86,6 @@ object IcsParser {
     }
 }
 
-internal fun String.normalizeSpaces(): String = trim().replace(Regex("\\s+"), " ")
+private val WHITESPACE = Regex("\\s+")
+
+internal fun String.normalizeSpaces(): String = trim().replace(WHITESPACE, " ")

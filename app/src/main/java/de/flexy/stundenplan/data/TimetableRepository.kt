@@ -18,6 +18,15 @@ class TimetableRepository(context: Context) {
     companion object {
         const val DEFAULT_SEMESTER = "ELTB.1.A"
         private const val BASE = "https://raumzeit.hka-iwi.de/api/v1/timetables/public/"
+
+        /**
+         * Zuletzt geparster Stand, prozessweit: Widget, Erinnerungen und UI erzeugen eigene
+         * Repository-Instanzen und würden die Dateien sonst jedes Mal neu einlesen.
+         */
+        private class Parsed(val sem: String, val icsStamp: Long, val jsonStamp: Long, val lectures: List<Lecture>)
+
+        @Volatile
+        private var parsed: Parsed? = null
     }
 
     private val appContext = context.applicationContext
@@ -87,9 +96,14 @@ class TimetableRepository(context: Context) {
     fun loadCachedSync(sem: String = semester): List<Lecture>? {
         val ics = icsFile(sem)
         if (!ics.exists()) return null
-        return runCatching {
-            build(ics.readText(), jsonFile(sem).takeIf { it.exists() }?.readText())
-        }.getOrNull()
+        val json = jsonFile(sem).takeIf { it.exists() }
+        val icsStamp = ics.lastModified()
+        val jsonStamp = json?.lastModified() ?: 0L
+        parsed?.takeIf { it.sem == sem && it.icsStamp == icsStamp && it.jsonStamp == jsonStamp }
+            ?.let { return it.lectures }
+        return runCatching { build(ics.readText(), json?.readText()) }.getOrNull()?.also {
+            parsed = Parsed(sem, icsStamp, jsonStamp, it)
+        }
     }
 
     /** Termine, die tatsächlich stattfinden und nicht ausgeblendet sind. */
@@ -108,6 +122,7 @@ class TimetableRepository(context: Context) {
         val lectures = build(ics, json)
         icsFile(sem).writeText(ics)
         if (json != null) jsonFile(sem).writeText(json)
+        parsed = null
         prefs.edit().putLong("updated_${key(sem)}", System.currentTimeMillis()).apply()
         lectures
     }

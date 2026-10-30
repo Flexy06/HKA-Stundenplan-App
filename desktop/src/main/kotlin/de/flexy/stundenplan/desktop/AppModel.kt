@@ -1,6 +1,7 @@
 package de.flexy.stundenplan.desktop
 
 import de.flexy.stundenplan.data.ChangeDetector
+import de.flexy.stundenplan.data.IcsExport
 import de.flexy.stundenplan.data.Lecture
 import de.flexy.stundenplan.data.LectureFilter
 import de.flexy.stundenplan.data.MensaLine
