@@ -27,6 +27,7 @@ vor Vorlesungen und bei Änderungen. Auf Wunsch startet sie automatisch mit Wind
   Vordergrund mit laufender Vorlesung (Restzeit) und der nächsten.
 - **Tray-Tooltip** zeigt beim Drüberfahren die nächste Vorlesung mit Raum.
 - **Hell/Dunkel/wie Windows** in den Einstellungen umschaltbar.
+- **Mensa-Favoriten** mit Ernährungsfilter und Benachrichtigung, **Überschneidungs-Hinweis**, Semester-Fortschritt und Feiertage – wie auf dem Handy.
 - **Kalender-Export**: gefilterten Plan als `.ics` für Outlook, Google oder Apple Kalender speichern.
 - Fenstergröße und -position werden gemerkt.
 
@@ -45,6 +46,7 @@ Bedienung: ←/→ blättern, Strg+T heute, F5 aktualisieren, Strg+M Mini-Fenste
 - **Stumm in Vorlesungen** (optional): setzt das Handy während der Vorlesungen auf „Nur Priorität“ und danach zurück – Termine direkt hintereinander gelten als ein Block
 - **Mensa-Wochenplan** mit allen Gerichten der aktuellen und nächsten Woche, Favoriten markiert
 - **App-Shortcuts**: Icon lange drücken → Heute, Woche oder Mensa
+- **Semester-Fortschritt** („Woche 7/15“) in der Kopfzeile und **Feiertage/Brückentage** (Baden-Württemberg) im Tag
 - **Änderungs-Hinweise**: Benachrichtigung, wenn eine Vorlesung ausfällt, verlegt wird oder den Raum wechselt
 - **Tagesvorschau** am Vorabend oder morgens: alle Termine des Tages auf einen Blick
 - **Ausfälle** werden durchgestrichen angezeigt

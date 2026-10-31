@@ -1,9 +1,11 @@
 package de.flexy.stundenplan.desktop
 
 import de.flexy.stundenplan.data.ChangeDetector
+import de.flexy.stundenplan.data.Diet
 import de.flexy.stundenplan.data.IcsExport
 import de.flexy.stundenplan.data.Lecture
 import de.flexy.stundenplan.data.LectureFilter
+import de.flexy.stundenplan.data.MensaFavorites
 import de.flexy.stundenplan.data.MensaLine
 import de.flexy.stundenplan.data.Rhythm
 import kotlinx.coroutines.CancellationException
@@ -116,7 +118,35 @@ class AppModel(private val scope: CoroutineScope, private val notify: (title: St
         if (!_state.value.settings.showMensa) return
         scope.launch {
             val data = runCatching { Repository.loadMensa(force) }.getOrDefault(emptyMap())
-            if (data.isNotEmpty()) _state.update { it.copy(mensa = data) }
+            if (data.isNotEmpty()) {
+                _state.update { it.copy(mensa = data) }
+                checkFavorites(data)
+            }
+        }
+    }
+
+    /** Meldet Lieblingsgerichte von heute (bis 13 Uhr) und morgen – jedes nur einmal. */
+    private fun checkFavorites(menu: Map<LocalDate, List<MensaLine>>) {
+        val s = _state.value.settings
+        if (!s.notifyFavorites || !s.showMensa || s.mensaFavorites.isEmpty()) return
+        val now = LocalDateTime.now()
+        val today = now.toLocalDate()
+        val hits = MensaFavorites.hits(menu, s.mensaFavorites, s.mensaDiet, today)
+            .filter { it.date == today.plusDays(1) || (it.date == today && now.hour < 13) }
+            .filter { MensaFavorites.key(it) !in s.notifiedFavorites }
+        if (hits.isEmpty()) return
+        notify(
+            if (hits.size == 1) "Lieblingsgericht in der Mensa" else "${hits.size} Lieblingsgerichte in der Mensa",
+            hits.take(4).joinToString("\n") { h ->
+                (if (h.date == today) "Heute" else "Morgen") + ": ${h.meal.name}" +
+                    if (h.meal.price.isNotBlank()) " · ${h.meal.price}" else ""
+            },
+        )
+        updateSettings {
+            it.copy(
+                notifiedFavorites = it.notifiedFavorites.filter { k -> k.substringBefore('|') >= today.toString() }.toSet() +
+                    hits.map { h -> MensaFavorites.key(h) },
+            )
         }
     }
 
@@ -179,6 +209,16 @@ class AppModel(private val scope: CoroutineScope, private val notify: (title: St
     fun setWeekView(v: Boolean) = updateSettings { it.copy(weekView = v) }
     fun setReminderMinutes(v: Int) = updateSettings { it.copy(reminderMinutes = v) }
     fun setNotifyChanges(v: Boolean) = updateSettings { it.copy(notifyChanges = v) }
+    fun setMensaDiet(v: Diet) = updateSettings { it.copy(mensaDiet = v) }
+    fun setNotifyFavorites(v: Boolean) = updateSettings { it.copy(notifyFavorites = v) }
+
+    fun addMensaFavorite(keyword: String) {
+        val k = keyword.trim()
+        if (k.isEmpty() || _state.value.settings.mensaFavorites.any { it.equals(k, ignoreCase = true) }) return
+        updateSettings { it.copy(mensaFavorites = it.mensaFavorites + k) }
+    }
+
+    fun removeMensaFavorite(keyword: String) = updateSettings { it.copy(mensaFavorites = it.mensaFavorites - keyword) }
 
     fun setThemeMode(v: String) = updateSettings { it.copy(themeMode = v) }
     fun setMiniWindow(v: Boolean) = updateSettings { it.copy(miniWindow = v) }

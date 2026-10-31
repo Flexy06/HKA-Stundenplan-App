@@ -31,6 +31,8 @@ import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -58,7 +60,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.flexy.stundenplan.data.Campus
 import de.flexy.stundenplan.data.Lecture
+import de.flexy.stundenplan.data.Holidays
 import de.flexy.stundenplan.data.LectureFilter
+import de.flexy.stundenplan.data.MensaFavorites
+import de.flexy.stundenplan.data.ScheduleInsights
 import de.flexy.stundenplan.data.Meal
 import de.flexy.stundenplan.data.MensaLine
 import de.flexy.stundenplan.data.MensaSource
@@ -90,12 +95,14 @@ fun DayList(
     today: LocalDate,
     lectures: List<Lecture>,
     mensa: List<MensaLine>?,
+    mensaFavorites: Set<String>,
     now: LocalDateTime,
     selected: Lecture?,
     onClick: (Lecture) -> Unit,
     onRoomClick: (RoomInfo, String) -> Unit,
 ) {
     val active = lectures.filter { !it.cancelled }
+    val conflicts = remember(lectures) { ScheduleInsights.conflicts(lectures) }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp),
@@ -112,6 +119,8 @@ fun DayList(
                 Text(rel, style = MaterialTheme.typography.headlineMedium)
                 val sub = buildString {
                     append(date.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN)))
+                    Holidays.nameOf(date)?.let { append(" · Feiertag: $it") }
+                    if (Holidays.isBridgeDay(date)) append(" · Brückentag")
                     if (active.isNotEmpty()) {
                         append(" · ${active.size} ${if (active.size == 1) "Termin" else "Termine"} · ")
                         append(active.minOf { it.start }.format(TIME) + "–" + active.maxOf { it.end }.format(TIME))
@@ -123,13 +132,16 @@ fun DayList(
         if (lectures.isEmpty()) {
             item {
                 Text(
-                    if (date.dayOfWeek.value >= 6) "Wochenende – keine Veranstaltungen" else "Keine Veranstaltungen",
+                    Holidays.nameOf(date)?.let { "Feiertag: $it" }
+                        ?: if (date.dayOfWeek.value >= 6) "Wochenende – keine Veranstaltungen"
+                        else if (Holidays.isBridgeDay(date)) "Brückentag – keine Veranstaltungen"
+                        else "Keine Veranstaltungen",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 32.dp),
                 )
             }
-            if (mensa != null) item { MensaCard(mensa) }
+            if (mensa != null) item { MensaCard(mensa, mensaFavorites) }
         } else {
             var lastEnd: LocalDateTime? = null
             var mensaPlaced = mensa == null
@@ -142,13 +154,13 @@ fun DayList(
                     }
                     if (!mensaPlaced && !l.start.toLocalTime().isBefore(java.time.LocalTime.of(12, 30))) {
                         mensaPlaced = true
-                        item { MensaCard(mensa!!) }
+                        item { MensaCard(mensa!!, mensaFavorites) }
                     }
                     lastEnd = if (prev == null || l.end.isAfter(prev)) l.end else prev
                 }
-                item { LectureRow(l, now, l == selected, onClick = { onClick(l) }, onRoomClick = { onRoomClick(it, l.title) }) }
+                item { LectureRow(l, now, l == selected, onClick = { onClick(l) }, onRoomClick = { onRoomClick(it, l.title) }, conflict = l in conflicts) }
             }
-            if (!mensaPlaced && mensa != null) item { MensaCard(mensa) }
+            if (!mensaPlaced && mensa != null) item { MensaCard(mensa, mensaFavorites) }
         }
     }
 }
@@ -167,7 +179,14 @@ private fun GapRow(minutes: Long) {
 }
 
 @Composable
-fun LectureRow(lecture: Lecture, now: LocalDateTime, selected: Boolean, onClick: () -> Unit, onRoomClick: (RoomInfo) -> Unit) {
+fun LectureRow(
+    lecture: Lecture,
+    now: LocalDateTime,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onRoomClick: (RoomInfo) -> Unit,
+    conflict: Boolean = false,
+) {
     val colors = moduleColors(lecture.title)
     val cs = MaterialTheme.colorScheme
     val running = !lecture.cancelled && !now.isBefore(lecture.start) && now.isBefore(lecture.end)
@@ -204,6 +223,10 @@ fun LectureRow(lecture: Lecture, now: LocalDateTime, selected: Boolean, onClick:
                     }
                     if (lecture.cancelled) {
                         Chip(if (lecture.note.isNotBlank()) "Entfällt · ${lecture.note}" else "Entfällt", cs.errorContainer, cs.onErrorContainer, Icons.Rounded.EventBusy)
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    if (conflict && !lecture.cancelled) {
+                        Chip("Überschneidung", cs.errorContainer, cs.onErrorContainer, Icons.Rounded.Warning)
                         Spacer(Modifier.height(6.dp))
                     }
                     Text(
@@ -279,7 +302,12 @@ fun RoomChip(location: String, color: Color, onRoomClick: (RoomInfo) -> Unit) {
 /* ------------------------------------------------------------------ Mensa */
 
 @Composable
-fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier, startExpanded: Boolean = false) {
+fun MensaCard(
+    lines: List<MensaLine>,
+    favorites: Set<String> = emptySet(),
+    modifier: Modifier = Modifier,
+    startExpanded: Boolean = false,
+) {
     var expanded by remember { mutableStateOf(startExpanded) }
     val cs = MaterialTheme.colorScheme
     Card(
@@ -298,11 +326,11 @@ fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier, startExpand
             Spacer(Modifier.height(8.dp))
             if (!expanded) {
                 lines.take(4).forEach { line ->
-                    val meal = line.meals.first()
+                    val meal = line.meals.firstOrNull { MensaFavorites.match(it, favorites) != null } ?: line.meals.first()
                     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(line.name, style = MaterialTheme.typography.labelMedium, color = cs.onTertiaryContainer.copy(alpha = 0.7f),
                             modifier = Modifier.width(100.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        MealText(meal, 1, Modifier.weight(1f))
+                        MealText(meal, favorites, 1, Modifier.weight(1f))
                         Text(meal.price, style = MaterialTheme.typography.labelMedium)
                     }
                 }
@@ -313,7 +341,7 @@ fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier, startExpand
                             Text(line.name.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             line.meals.forEach { meal ->
                                 Row(Modifier.fillMaxWidth().padding(top = 3.dp)) {
-                                    MealText(meal, 3, Modifier.weight(1f))
+                                    MealText(meal, favorites, 3, Modifier.weight(1f))
                                     Spacer(Modifier.width(8.dp))
                                     Text(meal.price, style = MaterialTheme.typography.labelMedium)
                                 }
@@ -330,21 +358,30 @@ fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier, startExpand
 }
 
 @Composable
-private fun MealText(meal: Meal, maxLines: Int, modifier: Modifier = Modifier) {
+private fun MealText(meal: Meal, favorites: Set<String>, maxLines: Int, modifier: Modifier = Modifier) {
+    val favorite = MensaFavorites.match(meal, favorites) != null
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        if (favorite) {
+            Icon(Icons.Rounded.Star, "Favorit", Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+            Spacer(Modifier.width(4.dp))
+        }
         if (meal.vegan || meal.vegetarian) {
             Icon(Icons.Rounded.Eco, if (meal.vegan) "vegan" else "vegetarisch", Modifier.size(14.dp),
                 tint = if (meal.vegan) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.width(4.dp))
         }
-        Text(meal.name, style = MaterialTheme.typography.bodyMedium, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        Text(
+            meal.name, style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (favorite) FontWeight.Bold else null,
+            maxLines = maxLines, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
 /* ------------------------------------------------------------------ Seitenleiste */
 
 @Composable
-fun OverviewPanel(nextUp: Lecture?, now: LocalDateTime, mensaToday: List<MensaLine>?, onClick: (Lecture) -> Unit, onRoomClick: (RoomInfo, String) -> Unit) {
+fun OverviewPanel(nextUp: Lecture?, now: LocalDateTime, mensaToday: List<MensaLine>?, mensaFavorites: Set<String>, onClick: (Lecture) -> Unit, onRoomClick: (RoomInfo, String) -> Unit) {
     val cs = MaterialTheme.colorScheme
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (nextUp != null) {
@@ -375,7 +412,7 @@ fun OverviewPanel(nextUp: Lecture?, now: LocalDateTime, mensaToday: List<MensaLi
         } else {
             Text("Keine anstehenden Termine", style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant)
         }
-        if (mensaToday != null) MensaCard(mensaToday, startExpanded = true)
+        if (mensaToday != null) MensaCard(mensaToday, mensaFavorites, startExpanded = true)
     }
 }
 

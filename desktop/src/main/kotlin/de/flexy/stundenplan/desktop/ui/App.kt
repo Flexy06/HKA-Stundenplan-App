@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -33,6 +34,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -57,7 +59,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import de.flexy.stundenplan.data.Diet
 import de.flexy.stundenplan.data.Lecture
+import de.flexy.stundenplan.data.MensaFavorites
+import de.flexy.stundenplan.data.SemesterProgress
 import de.flexy.stundenplan.data.Rhythm
 import de.flexy.stundenplan.data.RoomInfo
 import de.flexy.stundenplan.desktop.AppModel
@@ -154,7 +159,10 @@ fun App(model: AppModel, nav: NavController) {
                             date = focus,
                             today = today,
                             lectures = state.byDay[focus].orEmpty(),
-                            mensa = if (state.settings.showMensa && !focus.isBefore(today)) state.mensa[focus] else null,
+                            mensa = if (state.settings.showMensa && !focus.isBefore(today)) {
+                                state.mensa[focus]?.let { MensaFavorites.filter(it, state.settings.mensaDiet) }?.takeIf { it.isNotEmpty() }
+                            } else null,
+                            mensaFavorites = state.settings.mensaFavorites,
                             now = now,
                             selected = selected,
                             onClick = { selected = it },
@@ -182,7 +190,11 @@ fun App(model: AppModel, nav: NavController) {
                         OverviewPanel(
                             nextUp = state.visible.firstOrNull { !it.cancelled && it.start.isAfter(now) },
                             now = now,
-                            mensaToday = if (state.settings.showMensa) state.mensa[if (week) today else focus] else null,
+                            mensaToday = if (state.settings.showMensa) {
+                                state.mensa[if (week) today else focus]
+                                    ?.let { MensaFavorites.filter(it, state.settings.mensaDiet) }?.takeIf { it.isNotEmpty() }
+                            } else null,
+                            mensaFavorites = state.settings.mensaFavorites,
                             onClick = { selected = it },
                             onRoomClick = { r, t -> openRoom(r, t) },
                         )
@@ -210,14 +222,16 @@ private fun TopBar(
     onMini: () -> Unit,
 ) {
     val monday = mondayOf(focus)
+    val progress = remember(state.all, focus) { SemesterProgress.of(state.all, focus) }
+    val progressText = progress?.let { " · ${it.label}" }.orEmpty()
     val label = if (week) {
         val sunday = monday.plusDays(6)
-        "KW ${focus.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)} · " +
+        "KW ${focus.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)}$progressText · " +
             monday.format(DateTimeFormatter.ofPattern("d. MMM", Locale.GERMAN)) + " – " +
             sunday.format(DateTimeFormatter.ofPattern("d. MMM yyyy", Locale.GERMAN))
     } else {
         focus.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM yyyy", Locale.GERMAN)) +
-            " · KW ${focus.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)}"
+            " · KW ${focus.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)}$progressText"
     }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
@@ -326,6 +340,7 @@ private fun SettingsOverlay(state: UiState, model: AppModel, onClose: () -> Unit
                         s.miniWindow, model::setMiniWindow)
                     SwitchRow("Ausfälle anzeigen", "Abgesagte Termine durchgestrichen zeigen", s.showCancelled, model::setShowCancelled)
                     SwitchRow("Mensa-Speiseplan", "Essen der Mensa Moltke anzeigen", s.showMensa, model::setShowMensa)
+                    if (s.showMensa) MensaSettings(s, model)
                     SwitchRow("Bei Änderungen benachrichtigen", "Ausfälle, Raumänderungen, Verlegungen (Abgleich alle 3 h)", s.notifyChanges, model::setNotifyChanges)
                     Column(Modifier.padding(vertical = 8.dp)) {
                         Text("Erinnerung vor Vorlesungen", style = MaterialTheme.typography.bodyLarge)
@@ -407,6 +422,53 @@ private fun showInExplorer(file: java.io.File) {
             ProcessBuilder("explorer.exe", "/select,", file.absolutePath).start()
         } else {
             java.awt.Desktop.getDesktop().open(file.parentFile)
+        }
+    }
+}
+
+/** Ernährungsfilter und Lieblingsgerichte der Mensa. */
+@Composable
+private fun MensaSettings(s: de.flexy.stundenplan.desktop.Settings, model: AppModel) {
+    var keyword by remember { mutableStateOf("") }
+    fun add() {
+        model.addMensaFavorite(keyword)
+        keyword = ""
+    }
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Text("Mensa: Ernährung", style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for ((diet, label) in listOf(Diet.ALL to "Alles", Diet.VEGETARIAN to "Vegetarisch", Diet.VEGAN to "Vegan")) {
+                FilterChip(selected = s.mensaDiet == diet, onClick = { model.setMensaDiet(diet) }, label = { Text(label) })
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text("Lieblingsgerichte", style = MaterialTheme.typography.bodyLarge)
+        Text("Stichwörter wie „Currywurst“ – Treffer sind im Speiseplan markiert.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = keyword, onValueChange = { keyword = it },
+                placeholder = { Text("z.B. Currywurst") }, singleLine = true, modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(12.dp))
+            Button(onClick = { add() }, enabled = keyword.isNotBlank()) { Text("Hinzufügen") }
+        }
+        if (s.mensaFavorites.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (fav in s.mensaFavorites.sortedBy { it.lowercase() }) {
+                    InputChip(
+                        selected = false,
+                        onClick = { model.removeMensaFavorite(fav) },
+                        label = { Text(fav) },
+                        trailingIcon = { Icon(Icons.Rounded.Close, "Entfernen", Modifier.size(16.dp)) },
+                    )
+                }
+            }
+            SwitchRow("Favoriten melden", "Windows-Benachrichtigung, wenn ein Lieblingsgericht auf dem Plan steht",
+                s.notifyFavorites, model::setNotifyFavorites)
         }
     }
 }

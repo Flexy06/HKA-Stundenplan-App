@@ -1,5 +1,6 @@
 package de.flexy.stundenplan.desktop
 
+import de.flexy.stundenplan.data.Diet
 import de.flexy.stundenplan.data.Rhythm
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,6 +27,12 @@ data class Settings(
     /** Minuten vor Beginn, 0 = aus */
     val reminderMinutes: Int = 10,
     val notifyChanges: Boolean = true,
+    val mensaDiet: Diet = Diet.ALL,
+    /** Stichwörter für Lieblingsgerichte, z.B. "Currywurst" */
+    val mensaFavorites: Set<String> = emptySet(),
+    val notifyFavorites: Boolean = true,
+    /** schon gemeldete Favoriten-Treffer ("Datum|Gericht") */
+    val notifiedFavorites: Set<String> = emptySet(),
     val autostart: Boolean = false,
     val lastUpdated: Long = 0L,
     /** "system", "light" oder "dark" */
@@ -64,6 +71,10 @@ object SettingsStore {
                 showMensa = o.optBoolean("showMensa", true),
                 reminderMinutes = o.optInt("reminderMinutes", 10),
                 notifyChanges = o.optBoolean("notifyChanges", true),
+                mensaDiet = runCatching { Diet.valueOf(o.optString("mensaDiet", "ALL")) }.getOrDefault(Diet.ALL),
+                mensaFavorites = o.optJSONArray("mensaFavorites").toStringSet(),
+                notifyFavorites = o.optBoolean("notifyFavorites", true),
+                notifiedFavorites = o.optJSONArray("notifiedFavorites").toStringSet(),
                 autostart = o.optBoolean("autostart", false),
                 lastUpdated = o.optLong("lastUpdated", 0L),
                 themeMode = o.optString("themeMode", "system"),
@@ -90,6 +101,10 @@ object SettingsStore {
             .put("showMensa", s.showMensa)
             .put("reminderMinutes", s.reminderMinutes)
             .put("notifyChanges", s.notifyChanges)
+            .put("mensaDiet", s.mensaDiet.name)
+            .put("mensaFavorites", JSONArray(s.mensaFavorites.toList()))
+            .put("notifyFavorites", s.notifyFavorites)
+            .put("notifiedFavorites", JSONArray(s.notifiedFavorites.toList()))
             .put("autostart", s.autostart)
             .put("lastUpdated", s.lastUpdated)
             .put("themeMode", s.themeMode)

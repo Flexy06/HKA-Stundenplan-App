@@ -133,4 +133,42 @@ class SharedLogicTest {
         assertTrue(QuietTimes.isQuiet(blocks, at("08:00")))
         assertFalse(QuietTimes.isQuiet(blocks, at("09:30")))
     }
+
+    @Test fun holidaysBadenWuerttemberg() {
+        val y = Holidays.forYear(2026)
+        fun d(m: Int, day: Int) = java.time.LocalDate.of(2026, m, day)
+        assertEquals(d(4, 5), Holidays.easter(2026))
+        assertEquals(java.time.LocalDate.of(2027, 3, 28), Holidays.easter(2027))
+        assertEquals("Karfreitag", y[d(4, 3)])
+        assertEquals("Ostermontag", y[d(4, 6)])
+        assertEquals("Christi Himmelfahrt", y[d(5, 14)])
+        assertEquals("Pfingstmontag", y[d(5, 25)])
+        assertEquals("Fronleichnam", y[d(6, 4)])
+        assertEquals("Allerheiligen", Holidays.nameOf(d(11, 1)))
+        assertNull(Holidays.nameOf(d(11, 2)))
+        assertEquals(12, y.size)
+    }
+
+    @Test fun bridgeDays() {
+        fun d(m: Int, day: Int) = java.time.LocalDate.of(2026, m, day)
+        assertTrue(Holidays.isBridgeDay(d(5, 15)))   // Fr nach Himmelfahrt
+        assertTrue(Holidays.isBridgeDay(d(6, 5)))    // Fr nach Fronleichnam
+        assertFalse(Holidays.isBridgeDay(d(5, 22)))
+        assertFalse(Holidays.isBridgeDay(d(5, 14)))  // der Feiertag selbst
+    }
+
+    @Test fun semesterProgress() {
+        fun at(m: Int, day: Int) = lec("X", "08:00", "09:30").let {
+            it.copy(start = it.start.withMonth(m).withDayOfMonth(day), end = it.end.withMonth(m).withDayOfMonth(day))
+        }
+        // Mo 2.11. bis Fr 4.12. → 5 Wochen
+        val list = listOf(at(11, 2), at(11, 18), at(12, 4))
+        assertEquals(SemesterProgress(1, 5), SemesterProgress.of(list, java.time.LocalDate.of(2026, 11, 3)))
+        assertEquals(SemesterProgress(3, 5), SemesterProgress.of(list, java.time.LocalDate.of(2026, 11, 18)))
+        assertEquals(SemesterProgress(5, 5), SemesterProgress.of(list, java.time.LocalDate.of(2026, 12, 6)))
+        assertNull(SemesterProgress.of(list, java.time.LocalDate.of(2026, 12, 7)))
+        assertNull(SemesterProgress.of(list, java.time.LocalDate.of(2026, 10, 30)))
+        assertNull(SemesterProgress.of(listOf(at(11, 2)), java.time.LocalDate.of(2026, 11, 2)))
+        assertEquals("Woche 3/5", SemesterProgress(3, 5).label)
+    }
 }

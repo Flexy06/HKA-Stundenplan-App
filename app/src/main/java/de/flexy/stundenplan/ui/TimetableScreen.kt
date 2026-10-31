@@ -66,7 +66,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.flexy.stundenplan.data.Lecture
+import de.flexy.stundenplan.data.Holidays
 import de.flexy.stundenplan.data.MensaFavorites
+import de.flexy.stundenplan.data.SemesterProgress
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -244,12 +246,15 @@ fun TimetableScreen(vm: TimetableViewModel) {
     }
 
     val isAtToday = if (state.weekView) mondayOf(selected) == todayMonday else selected == today
+    // "Woche 7/15" des Semesters – für die Woche bzw. den Tag, der gerade gezeigt wird
+    val progress = remember(state.all, selected) { SemesterProgress.of(state.all, selected) }
+    val progressText = progress?.let { " · ${it.label}" }.orEmpty()
     val subtitle = if (state.weekView) {
         val end = selected.plusDays(6)
-        "${state.semester} · KW ${selected.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)} · " +
+        "${state.semester} · KW ${selected.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)}$progressText · " +
             selected.format(DateTimeFormatter.ofPattern("d.M.")) + "–" + end.format(DateTimeFormatter.ofPattern("d.M."))
     } else {
-        "${state.semester} · KW ${selected.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)}"
+        "${state.semester} · KW ${selected.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR)}$progressText"
     }
 
     Scaffold(
@@ -606,6 +611,8 @@ private fun DayHeader(date: LocalDate, today: LocalDate, active: List<Lecture>) 
         Text(rel, style = MaterialTheme.typography.headlineMedium)
         val sub = buildString {
             append(date.format(DateTimeFormatter.ofPattern("EEEE, d. MMMM", GERMAN)))
+            Holidays.nameOf(date)?.let { append(" · Feiertag: $it") }
+            if (Holidays.isBridgeDay(date)) append(" · Brückentag")
             if (active.isNotEmpty()) {
                 append(" · ")
                 append(if (active.size == 1) "1 Termin" else "${active.size} Termine")
@@ -622,6 +629,8 @@ private fun DayHeader(date: LocalDate, today: LocalDate, active: List<Lecture>) 
 @Composable
 private fun EmptyDay(date: LocalDate) {
     val weekend = date.dayOfWeek.value >= 6
+    val holiday = Holidays.nameOf(date)
+    val bridge = holiday == null && Holidays.isBridgeDay(date)
     Column(
         Modifier.fillMaxWidth().padding(top = 56.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -633,7 +642,7 @@ private fun EmptyDay(date: LocalDate) {
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
-                    if (weekend) "WE" else "frei",
+                    if (holiday != null) "FT" else if (weekend) "WE" else "frei",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
@@ -641,7 +650,7 @@ private fun EmptyDay(date: LocalDate) {
         }
         Spacer(Modifier.height(20.dp))
         Text(
-            if (weekend) "Wochenende" else "Keine Veranstaltungen",
+            holiday ?: if (weekend) "Wochenende" else if (bridge) "Brückentag" else "Keine Veranstaltungen",
             style = MaterialTheme.typography.titleLarge,
         )
         Text(
