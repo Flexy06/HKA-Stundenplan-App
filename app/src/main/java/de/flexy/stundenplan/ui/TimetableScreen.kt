@@ -95,6 +95,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
     val snackbar = remember { SnackbarHostState() }
 
     var showSettings by remember { mutableStateOf(false) }
+    var showMensaWeek by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<Lecture?>(null) }
     var campusTarget by remember { mutableStateOf<Pair<RoomInfo, String?>?>(null) }
     // Gemeinsamer "Fokus"-Tag für Tages- und Wochenansicht
@@ -232,6 +233,16 @@ fun TimetableScreen(vm: TimetableViewModel) {
         }
     }
 
+    // App-Shortcuts (langes Drücken aufs Icon)
+    LaunchedEffect(state.pendingAction) {
+        when (state.pendingAction) {
+            AppAction.TODAY -> { switchView(false, today); goTo(today) }
+            AppAction.WEEK -> { switchView(true, today); goTo(today) }
+            AppAction.MENSA -> showMensaWeek = true
+        }
+        if (state.pendingAction != null) vm.consumeAction()
+    }
+
     val isAtToday = if (state.weekView) mondayOf(selected) == todayMonday else selected == today
     val subtitle = if (state.weekView) {
         val end = selected.plusDays(6)
@@ -339,6 +350,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
                                 state.mensa[date]?.let { MensaFavorites.filter(it, state.mensaDiet) }?.takeIf { it.isNotEmpty() }
                             } else null,
                             mensaFavorites = state.mensaFavorites,
+                            onMensaWeek = { showMensaWeek = true },
                             bottomPadding = padding.calculateBottomPadding(),
                             onClick = { detail = it },
                             onRoomClick = { room, title -> openRoom(room, title) },
@@ -351,6 +363,14 @@ fun TimetableScreen(vm: TimetableViewModel) {
 
     if (showSettings) {
         SettingsSheet(state = state, vm = vm, onDismiss = { showSettings = false })
+    }
+    if (showMensaWeek) {
+        MensaWeekSheet(
+            menu = state.mensa,
+            diet = state.mensaDiet,
+            favorites = state.mensaFavorites,
+            onDismiss = { showMensaWeek = false },
+        )
     }
     detail?.let { lecture ->
         LectureSheet(
@@ -493,6 +513,7 @@ private fun DayPage(
     now: LocalDateTime,
     mensa: List<de.flexy.stundenplan.data.MensaLine>?,
     mensaFavorites: Set<String>,
+    onMensaWeek: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
     onClick: (Lecture) -> Unit,
     onRoomClick: (RoomInfo, String?) -> Unit,
@@ -522,7 +543,7 @@ private fun DayPage(
             }
         }
         if (lectures.isEmpty()) {
-            if (mensa != null) item(key = "mensa") { MensaCard(mensa, mensaFavorites, Modifier.padding(top = 8.dp)) }
+            if (mensa != null) item(key = "mensa") { MensaCard(mensa, mensaFavorites, Modifier.padding(top = 8.dp), onWeek = onMensaWeek) }
             item(key = "empty") { EmptyDay(date) }
         } else {
             items(rows.size, key = { i ->
@@ -541,7 +562,7 @@ private fun DayPage(
                         conflict = r.lecture in conflicts,
                     )
                     is Row_.Gap -> GapRow(r.minutes)
-                    Row_.Mensa -> if (mensa != null) MensaCard(mensa, mensaFavorites)
+                    Row_.Mensa -> if (mensa != null) MensaCard(mensa, mensaFavorites, onWeek = onMensaWeek)
                 }
             }
         }

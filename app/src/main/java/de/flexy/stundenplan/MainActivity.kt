@@ -1,5 +1,6 @@
 package de.flexy.stundenplan
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         de.flexy.stundenplan.system.SyncWorker.schedule(this)
+        if (savedInstanceState == null) vm.handleAction(intent?.action)
         setContent {
             StundenplanTheme {
                 TimetableScreen(vm)
@@ -24,8 +26,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        vm.handleAction(intent.action)
+    }
+
     override fun onResume() {
         super.onResume()
         vm.refreshIfStale()
+        vm.syncQuietMode()
     }
 }

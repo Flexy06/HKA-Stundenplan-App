@@ -139,6 +139,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Reminders.reschedule(context)
         Digest.reschedule(context)
+        QuietMode.sync(context)
         NextLectureWidget.updateAll(context)
     }
 }

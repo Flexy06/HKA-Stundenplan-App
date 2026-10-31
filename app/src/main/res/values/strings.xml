@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">Stundenplan</string>
     <string name="widget_description">Deine nächsten Vorlesungen mit Raum</string>
+    <string name="shortcut_today">Heute</string>
+    <string name="shortcut_today_long">Heutiger Stundenplan</string>
+    <string name="shortcut_week">Woche</string>
+    <string name="shortcut_week_long">Wochenansicht</string>
+    <string name="shortcut_mensa">Mensa</string>
+    <string name="shortcut_mensa_long">Mensa-Speiseplan der Woche</string>
 </resources>

@@ -2,6 +2,19 @@ package de.flexy.stundenplan.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.remember
+import de.flexy.stundenplan.data.Diet
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,7 +53,12 @@ import de.flexy.stundenplan.system.Navigation
 
 /** Speiseplan der Mensa Moltke als Karte in der Mittagspause. Antippen klappt alle Gerichte aus. */
 @Composable
-fun MensaCard(lines: List<MensaLine>, favorites: Set<String> = emptySet(), modifier: Modifier = Modifier) {
+fun MensaCard(
+    lines: List<MensaLine>,
+    favorites: Set<String> = emptySet(),
+    modifier: Modifier = Modifier,
+    onWeek: (() -> Unit)? = null,
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -108,6 +126,12 @@ fun MensaCard(lines: List<MensaLine>, favorites: Set<String> = emptySet(), modif
                         onClick = { Navigation.openUrl(context, MensaRepository.URL) },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     ) { Text("Speiseplan auf sw-ka.de öffnen") }
+                    if (onWeek != null) {
+                        androidx.compose.material3.TextButton(
+                            onClick = onWeek,
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                        ) { Text("Ganze Woche ansehen") }
+                    }
                 }
             }
         }
@@ -143,5 +167,94 @@ private fun MealText(meal: Meal, favorites: Set<String>, maxLines: Int, modifier
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+private val WEEK_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN)
+
+/** Speiseplan aller geladenen Tage (aktuelle und nächste Woche), Favoriten markiert, optional nur Treffer. */
+@Composable
+fun MensaWeekSheet(
+    menu: Map<LocalDate, List<MensaLine>>,
+    diet: Diet,
+    favorites: Set<String>,
+    onDismiss: () -> Unit,
+) {
+    var onlyFavorites by rememberSaveable { mutableStateOf(false) }
+    val today = LocalDate.now()
+    val days = remember(menu, diet, favorites, onlyFavorites) {
+        menu.toSortedMap().filterKeys { !it.isBefore(today) }.mapNotNull { (date, lines) ->
+            var shown = MensaFavorites.filter(lines, diet)
+            if (onlyFavorites) {
+                shown = shown.mapNotNull { line ->
+                    val meals = line.meals.filter { MensaFavorites.match(it, favorites) != null }
+                    if (meals.isEmpty()) null else MensaLine(line.name, meals)
+                }
+            }
+            if (shown.isEmpty()) null else date to shown
+        }
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        LazyColumn(
+            Modifier.fillMaxWidth().navigationBarsPadding(),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Text("Mensa Moltke", style = MaterialTheme.typography.headlineSmall)
+                if (favorites.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    FilterChip(
+                        selected = onlyFavorites,
+                        onClick = { onlyFavorites = !onlyFavorites },
+                        label = { Text("Nur Favoriten") },
+                        leadingIcon = { Icon(Icons.Rounded.Star, null, Modifier.size(16.dp)) },
+                    )
+                }
+            }
+            if (days.isEmpty()) {
+                item {
+                    Text(
+                        if (onlyFavorites) "Keine Favoriten auf dem Plan." else "Noch kein Speiseplan geladen.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            items(days, key = { it.first.toEpochDay() }) { (date, lines) ->
+                val rel = when (date) {
+                    today -> "Heute · "
+                    today.plusDays(1) -> "Morgen · "
+                    else -> ""
+                }
+                Column {
+                    Text(rel + date.format(WEEK_DAY), style = MaterialTheme.typography.titleMedium)
+                    HorizontalDivider(Modifier.padding(vertical = 6.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        lines.forEach { line ->
+                            Column {
+                                Text(
+                                    line.name.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                line.meals.forEach { meal ->
+                                    Row(Modifier.fillMaxWidth().padding(top = 3.dp), verticalAlignment = Alignment.Top) {
+                                        MealText(meal, favorites, maxLines = 3, modifier = Modifier.weight(1f))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(meal.price, style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
     }
 }

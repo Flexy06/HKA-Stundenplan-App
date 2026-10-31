@@ -21,6 +21,7 @@ import de.flexy.stundenplan.data.Campus
 import de.flexy.stundenplan.data.RoomInfo
 import de.flexy.stundenplan.system.CalendarExport
 import de.flexy.stundenplan.system.Navigation
+import de.flexy.stundenplan.system.QuietMode
 import de.flexy.stundenplan.system.Reminders
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -501,6 +502,18 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                     Icon(Icons.Rounded.Share, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Als Kalenderdatei (.ics) exportieren")
+                }
+                SwitchRow(
+                    "Stumm in Vorlesungen",
+                    "Setzt das Handy während der Vorlesungen auf „Nur Priorität“. Android fragt beim Einschalten nach Zugriff auf „Nicht stören“.",
+                    state.quietMode,
+                ) { on ->
+                    vm.setQuietMode(on)
+                    if (on && !QuietMode.hasAccess(context)) {
+                        context.startActivity(
+                            Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
                 }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Text("Module", style = MaterialTheme.typography.titleMedium)

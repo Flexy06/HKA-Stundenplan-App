@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="today"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_today"
+        android:shortcutShortLabel="@string/shortcut_today"
+        android:shortcutLongLabel="@string/shortcut_today_long">
+        <intent
+            android:action="de.flexy.stundenplan.TODAY"
+            android:targetClass="de.flexy.stundenplan.MainActivity"
+            android:targetPackage="de.flexy.stundenplan" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="week"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_week"
+        android:shortcutShortLabel="@string/shortcut_week"
+        android:shortcutLongLabel="@string/shortcut_week_long">
+        <intent
+            android:action="de.flexy.stundenplan.WEEK"
+            android:targetClass="de.flexy.stundenplan.MainActivity"
+            android:targetPackage="de.flexy.stundenplan" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="mensa"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_mensa"
+        android:shortcutShortLabel="@string/shortcut_mensa"
+        android:shortcutLongLabel="@string/shortcut_mensa_long">
+        <intent
+            android:action="de.flexy.stundenplan.MENSA"
+            android:targetClass="de.flexy.stundenplan.MainActivity"
+            android:targetPackage="de.flexy.stundenplan" />
+    </shortcut>
+</shortcuts>

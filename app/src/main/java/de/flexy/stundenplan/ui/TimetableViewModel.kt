@@ -12,6 +12,7 @@ import de.flexy.stundenplan.data.LectureFilter
 import de.flexy.stundenplan.data.Rhythm
 import de.flexy.stundenplan.data.MensaLine
 import de.flexy.stundenplan.data.MensaRepository
+import de.flexy.stundenplan.system.QuietMode
 import de.flexy.stundenplan.system.Reminders
 import de.flexy.stundenplan.widget.NextLectureWidget
 import de.flexy.stundenplan.data.TimetableRepository
@@ -21,6 +22,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** Aktionen, die App-Shortcuts auslösen (siehe res/xml/shortcuts.xml). */
+object AppAction {
+    const val TODAY = "de.flexy.stundenplan.TODAY"
+    const val WEEK = "de.flexy.stundenplan.WEEK"
+    const val MENSA = "de.flexy.stundenplan.MENSA"
+    val ALL = setOf(TODAY, WEEK, MENSA)
+}
 
 data class UiState(
     val semester: String = TimetableRepository.DEFAULT_SEMESTER,
@@ -45,6 +54,9 @@ data class UiState(
     val mensaDiet: Diet = Diet.ALL,
     val mensaFavorites: Set<String> = emptySet(),
     val notifyFavorites: Boolean = true,
+    val quietMode: Boolean = false,
+    /** Von einem App-Shortcut angeforderte Aktion (siehe [AppAction]), bis die Oberfläche sie umgesetzt hat. */
+    val pendingAction: String? = null,
 ) {
     val visible: List<Lecture> by lazy {
         val f = LectureFilter(hidden, rhythms, skipped)
@@ -79,6 +91,7 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
             mensaDiet = repo.mensaDiet,
             mensaFavorites = repo.mensaFavorites,
             notifyFavorites = repo.notifyFavorites,
+            quietMode = repo.quietInLectures,
         )
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -237,6 +250,24 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
         repo.notifyFavorites = value
         _state.update { it.copy(notifyFavorites = value) }
     }
+
+    fun setQuietMode(value: Boolean) {
+        repo.quietInLectures = value
+        _state.update { it.copy(quietMode = value) }
+        syncQuietMode()
+    }
+
+    /** Ruhemodus mit dem aktuellen Stand abgleichen (z.B. nach Rückkehr aus den Systemeinstellungen). */
+    fun syncQuietMode() {
+        val app = getApplication<Application>()
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { runCatching { QuietMode.sync(app) } }
+    }
+
+    fun handleAction(action: String?) {
+        if (action != null && action in AppAction.ALL) _state.update { it.copy(pendingAction = action) }
+    }
+
+    fun consumeAction() = _state.update { it.copy(pendingAction = null) }
 
     fun setNotifyChanges(value: Boolean) {
         repo.notifyChanges = value

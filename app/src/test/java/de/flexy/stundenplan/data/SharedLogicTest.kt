@@ -110,4 +110,27 @@ class SharedLogicTest {
         assertTrue(MensaFavorites.hits(menu, listOf("dal"), Diet.ALL, d2).isEmpty()) // vergangen
         assertTrue(MensaFavorites.hits(menu, emptyList(), Diet.ALL, d1).isEmpty())
     }
+
+    @Test fun quietBlocksMergeShortGaps() {
+        val a = lec("A", "08:00", "09:30")
+        val b = lec("B", "09:40", "11:10") // 10 min Raumwechsel → ein Block
+        val c = lec("C", "13:00", "14:30")
+        val x = lec("X", "11:30", "12:00", cancelled = true)
+        val blocks = QuietTimes.blocks(listOf(c, b, x, a))
+        assertEquals(2, blocks.size)
+        assertEquals(a.start, blocks[0].start)
+        assertEquals(b.end, blocks[0].end)
+        assertEquals(c.start, blocks[1].start)
+    }
+
+    @Test fun quietTransitions() {
+        val blocks = QuietTimes.blocks(listOf(lec("A", "08:00", "09:30"), lec("C", "13:00", "14:30")))
+        fun at(t: String) = LocalDateTime.parse("2026-11-02T$t")
+        assertEquals(QuietTimes.Transition(at("08:00"), true), QuietTimes.next(blocks, at("07:00")))
+        assertEquals(QuietTimes.Transition(at("09:30"), false), QuietTimes.next(blocks, at("08:00")))
+        assertEquals(QuietTimes.Transition(at("13:00"), true), QuietTimes.next(blocks, at("09:30")))
+        assertEquals(null, QuietTimes.next(blocks, at("14:30")))
+        assertTrue(QuietTimes.isQuiet(blocks, at("08:00")))
+        assertFalse(QuietTimes.isQuiet(blocks, at("09:30")))
+    }
 }

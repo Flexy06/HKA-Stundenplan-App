@@ -42,6 +42,9 @@ Bedienung: ←/→ blättern, Strg+T heute, F5 aktualisieren, Strg+M Mini-Fenste
 - **Widget** für den Homescreen mit deinen nächsten Terminen
 - **Mensa-Speiseplan** der Mensa Moltke direkt in der Mittagspause – mit Preisen und vegan/vegetarisch-Kennzeichnung
 - **Mensa-Favoriten & Ernährung**: Lieblingsgerichte (z. B. „Currywurst“) werden im Speiseplan markiert und per Benachrichtigung gemeldet; Filter für vegetarisch/vegan
+- **Stumm in Vorlesungen** (optional): setzt das Handy während der Vorlesungen auf „Nur Priorität“ und danach zurück – Termine direkt hintereinander gelten als ein Block
+- **Mensa-Wochenplan** mit allen Gerichten der aktuellen und nächsten Woche, Favoriten markiert
+- **App-Shortcuts**: Icon lange drücken → Heute, Woche oder Mensa
 - **Änderungs-Hinweise**: Benachrichtigung, wenn eine Vorlesung ausfällt, verlegt wird oder den Raum wechselt
 - **Tagesvorschau** am Vorabend oder morgens: alle Termine des Tages auf einen Blick
 - **Ausfälle** werden durchgestrichen angezeigt

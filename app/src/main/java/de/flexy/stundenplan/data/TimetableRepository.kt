@@ -77,6 +77,16 @@ class TimetableRepository(context: Context) {
         get() = prefs.getBoolean("showMensa", true)
         set(value) = prefs.edit().putBoolean("showMensa", value).apply()
 
+    /** Handy während der Vorlesungen auf "Nur Priorität" stellen. */
+    var quietInLectures: Boolean
+        get() = prefs.getBoolean("quietInLectures", false)
+        set(value) = prefs.edit().putBoolean("quietInLectures", value).apply()
+
+    /** Haben wir "Nicht stören" gesetzt (und müssen es wieder aufheben)? */
+    var quietActive: Boolean
+        get() = prefs.getBoolean("quietActive", false)
+        set(value) = prefs.edit().putBoolean("quietActive", value).apply()
+
     var mensaDiet: Diet
         get() = runCatching { Diet.valueOf(prefs.getString("mensaDiet", null).orEmpty()) }.getOrDefault(Diet.ALL)
         set(value) = prefs.edit().putString("mensaDiet", value.name).apply()

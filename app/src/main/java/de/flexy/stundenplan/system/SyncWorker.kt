@@ -51,6 +51,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
         runCatching { Reminders.reschedule(ctx) }
         runCatching { NextLectureWidget.updateAll(ctx) }
+        runCatching { QuietMode.sync(ctx) }
         runCatching { FavoriteNotifier.check(ctx, repo) }
         return Result.success()
     }
