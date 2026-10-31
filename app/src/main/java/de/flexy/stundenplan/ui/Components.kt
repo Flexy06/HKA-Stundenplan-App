@@ -133,8 +133,9 @@ fun LectureCard(
             lecture.cancelled -> cs.onSurfaceVariant
             else -> colors.onContainer
         }
+        val haptics = rememberHaptics()
         Card(
-            onClick = onClick,
+            onClick = { haptics.tick(); onClick() },
             shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
             modifier = Modifier
@@ -279,8 +280,9 @@ fun NextUpCard(lecture: Lecture, now: LocalDateTime, onClick: () -> Unit, onRoom
         lecture.date == now.toLocalDate().plusDays(1) -> "morgen um ${lecture.start.format(TIME)}"
         else -> lecture.start.format(DATE_SHORT) + " " + lecture.start.format(TIME)
     }
+    val haptics = rememberHaptics()
     Card(
-        onClick = onClick,
+        onClick = { haptics.tick(); onClick() },
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = cs.primaryContainer, contentColor = cs.onPrimaryContainer),
         modifier = Modifier.fillMaxWidth(),
@@ -442,6 +444,7 @@ private fun InfoRow(
 @Composable
 fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit) {
     var semester by remember { mutableStateOf(state.semester) }
+    val haptics = rememberHaptics()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -524,7 +527,7 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                     }
                     Switch(
                         checked = title !in state.hidden,
-                        onCheckedChange = { vm.setModuleVisible(title, it) },
+                        onCheckedChange = { haptics.toggle(it); vm.setModuleVisible(title, it) },
                     )
                 }
             }
@@ -565,7 +568,8 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onChange)
+        val haptics = rememberHaptics()
+        Switch(checked = checked, onCheckedChange = { haptics.toggle(it); onChange(it) })
     }
 }
 

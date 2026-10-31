@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -66,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.flexy.stundenplan.data.Lecture
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.Duration
@@ -183,6 +185,17 @@ fun TimetableScreen(vm: TimetableViewModel) {
     val weekPager = rememberPagerState(initialPage = weekPageOf(LocalDate.ofEpochDay(focusDate))) { WEEK_COUNT }
     val pager = if (weekMode) weekPager else dayPager
 
+    // Haptik: Tick beim Wechsel von Tag/Woche, Bestätigung nach dem Aktualisieren
+    val haptics = rememberHaptics()
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.drop(1).collect { haptics.tick() }
+    }
+    var wasRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(state.refreshing) {
+        if (wasRefreshing && !state.refreshing) haptics.confirm()
+        wasRefreshing = state.refreshing
+    }
+
     fun syncPagersTo(date: LocalDate) {
         focusDate = date.toEpochDay()
         dayPager.requestScrollToPage(dayPageOf(date))
@@ -243,15 +256,15 @@ fun TimetableScreen(vm: TimetableViewModel) {
                 },
                 actions = {
                     AnimatedVisibility(visible = !isAtToday) {
-                        FilledTonalButton(onClick = { goTo(today) }) { Text("Heute") }
+                        FilledTonalButton(onClick = { haptics.tick(); goTo(today) }) { Text("Heute") }
                     }
-                    IconButton(onClick = { switchView(!state.weekView) }) {
+                    IconButton(onClick = { haptics.tick(); switchView(!state.weekView) }) {
                         Icon(
                             if (state.weekView) Icons.Rounded.ViewDay else Icons.Rounded.CalendarViewWeek,
                             contentDescription = if (state.weekView) "Tagesansicht" else "Wochenansicht",
                         )
                     }
-                    IconButton(onClick = { showSettings = true }) {
+                    IconButton(onClick = { haptics.tick(); showSettings = true }) {
                         Icon(Icons.Rounded.Tune, contentDescription = "Einstellungen")
                     }
                 },
@@ -280,7 +293,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
             } else if (state.weekView) {
                 PullToRefreshBox(
                     isRefreshing = state.refreshing,
-                    onRefresh = vm::refresh,
+                    onRefresh = { haptics.threshold(); vm.refresh() },
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     HorizontalPager(
@@ -304,7 +317,7 @@ fun TimetableScreen(vm: TimetableViewModel) {
             } else {
                 PullToRefreshBox(
                     isRefreshing = state.refreshing,
-                    onRefresh = vm::refresh,
+                    onRefresh = { haptics.threshold(); vm.refresh() },
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     HorizontalPager(
@@ -404,6 +417,7 @@ private fun WeekStrip(
 
 @Composable
 private fun DayPill(date: LocalDate, isSelected: Boolean, isToday: Boolean, hasEvents: Boolean, onClick: () -> Unit) {
+    val haptics = rememberHaptics()
     val cs = MaterialTheme.colorScheme
     val bg by animateColorAsState(
         when {
@@ -425,7 +439,7 @@ private fun DayPill(date: LocalDate, isSelected: Boolean, isToday: Boolean, hasE
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick)
+            .clickable(onClick = { haptics.tick(); onClick() })
             .padding(horizontal = 4.dp, vertical = 4.dp),
     ) {
         Text(

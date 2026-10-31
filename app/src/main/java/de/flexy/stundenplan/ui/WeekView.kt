@@ -187,6 +187,7 @@ fun WeekPage(
 
 @Composable
 private fun WeekBlock(lecture: Lecture, past: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val haptics = rememberHaptics()
     val cs = MaterialTheme.colorScheme
     val colors = moduleColors(lecture.title)
     val shape = RoundedCornerShape(10.dp)
@@ -196,7 +197,7 @@ private fun WeekBlock(lecture: Lecture, past: Boolean, modifier: Modifier, onCli
             .clip(shape)
             .background(if (lecture.cancelled) cs.surfaceContainerHigh else colors.container)
             .then(if (lecture.cancelled) Modifier.border(1.dp, cs.error.copy(alpha = 0.6f), shape) else Modifier)
-            .clickable(onClick = onClick)
+            .clickable(onClick = { haptics.tick(); onClick() })
     ) {
         Box(
             Modifier
