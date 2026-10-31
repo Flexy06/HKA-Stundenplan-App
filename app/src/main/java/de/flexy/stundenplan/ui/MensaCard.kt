@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Restaurant
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -32,13 +33,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.flexy.stundenplan.data.Meal
+import de.flexy.stundenplan.data.MensaFavorites
 import de.flexy.stundenplan.data.MensaLine
 import de.flexy.stundenplan.data.MensaRepository
 import de.flexy.stundenplan.system.Navigation
 
 /** Speiseplan der Mensa Moltke als Karte in der Mittagspause. Antippen klappt alle Gerichte aus. */
 @Composable
-fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier) {
+fun MensaCard(lines: List<MensaLine>, favorites: Set<String> = emptySet(), modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
     val context = LocalContext.current
@@ -60,7 +62,7 @@ fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier) {
             if (!expanded) {
                 // Kurzfassung: pro Linie das Hauptgericht
                 lines.take(4).forEach { line ->
-                    val meal = line.meals.first()
+                    val meal = line.meals.firstOrNull { MensaFavorites.match(it, favorites) != null } ?: line.meals.first()
                     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             line.name,
@@ -70,7 +72,7 @@ fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        MealText(meal, maxLines = 1, modifier = Modifier.weight(1f))
+                        MealText(meal, favorites, maxLines = 1, modifier = Modifier.weight(1f))
                         Text(meal.price, style = MaterialTheme.typography.labelMedium)
                     }
                 }
@@ -89,7 +91,7 @@ fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier) {
                             Text(line.name.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             line.meals.forEach { meal ->
                                 Row(Modifier.fillMaxWidth().padding(top = 3.dp), verticalAlignment = Alignment.Top) {
-                                    MealText(meal, maxLines = 3, modifier = Modifier.weight(1f))
+                                    MealText(meal, favorites, maxLines = 3, modifier = Modifier.weight(1f))
                                     Spacer(Modifier.width(8.dp))
                                     Text(meal.price, style = MaterialTheme.typography.labelMedium)
                                 }
@@ -113,8 +115,18 @@ fun MensaCard(lines: List<MensaLine>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MealText(meal: Meal, maxLines: Int, modifier: Modifier = Modifier) {
+private fun MealText(meal: Meal, favorites: Set<String>, maxLines: Int, modifier: Modifier = Modifier) {
+    val favorite = MensaFavorites.match(meal, favorites) != null
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        if (favorite) {
+            Icon(
+                Icons.Rounded.Star,
+                contentDescription = "Favorit",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.tertiary,
+            )
+            Spacer(Modifier.width(4.dp))
+        }
         if (meal.vegan || meal.vegetarian) {
             Icon(
                 Icons.Rounded.Eco,
@@ -124,6 +136,12 @@ private fun MealText(meal: Meal, maxLines: Int, modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.width(4.dp))
         }
-        Text(meal.name, style = MaterialTheme.typography.bodyMedium, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        Text(
+            meal.name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (favorite) FontWeight.Bold else null,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

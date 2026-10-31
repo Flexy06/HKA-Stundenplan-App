@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.flexy.stundenplan.data.Lecture
+import de.flexy.stundenplan.data.MensaFavorites
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -334,7 +335,10 @@ fun TimetableScreen(vm: TimetableViewModel) {
                                 state.visible.firstOrNull { !it.cancelled && it.date == today && it.start.isAfter(now) }
                             } else null,
                             now = now,
-                            mensa = if (state.showMensa && !date.isBefore(today)) state.mensa[date] else null,
+                            mensa = if (state.showMensa && !date.isBefore(today)) {
+                                state.mensa[date]?.let { MensaFavorites.filter(it, state.mensaDiet) }?.takeIf { it.isNotEmpty() }
+                            } else null,
+                            mensaFavorites = state.mensaFavorites,
                             bottomPadding = padding.calculateBottomPadding(),
                             onClick = { detail = it },
                             onRoomClick = { room, title -> openRoom(room, title) },
@@ -488,6 +492,7 @@ private fun DayPage(
     nextUp: Lecture?,
     now: LocalDateTime,
     mensa: List<de.flexy.stundenplan.data.MensaLine>?,
+    mensaFavorites: Set<String>,
     bottomPadding: androidx.compose.ui.unit.Dp,
     onClick: (Lecture) -> Unit,
     onRoomClick: (RoomInfo, String?) -> Unit,
@@ -517,7 +522,7 @@ private fun DayPage(
             }
         }
         if (lectures.isEmpty()) {
-            if (mensa != null) item(key = "mensa") { MensaCard(mensa, Modifier.padding(top = 8.dp)) }
+            if (mensa != null) item(key = "mensa") { MensaCard(mensa, mensaFavorites, Modifier.padding(top = 8.dp)) }
             item(key = "empty") { EmptyDay(date) }
         } else {
             items(rows.size, key = { i ->
@@ -536,7 +541,7 @@ private fun DayPage(
                         conflict = r.lecture in conflicts,
                     )
                     is Row_.Gap -> GapRow(r.minutes)
-                    Row_.Mensa -> if (mensa != null) MensaCard(mensa)
+                    Row_.Mensa -> if (mensa != null) MensaCard(mensa, mensaFavorites)
                 }
             }
         }

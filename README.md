@@ -41,6 +41,7 @@ Bedienung: ←/→ blättern, Strg+T heute, F5 aktualisieren, Strg+M Mini-Fenste
 - **Erinnerungen** 10, 15 oder 30 Minuten vor Beginn – mit Raum und Navigations-Button
 - **Widget** für den Homescreen mit deinen nächsten Terminen
 - **Mensa-Speiseplan** der Mensa Moltke direkt in der Mittagspause – mit Preisen und vegan/vegetarisch-Kennzeichnung
+- **Mensa-Favoriten & Ernährung**: Lieblingsgerichte (z. B. „Currywurst“) werden im Speiseplan markiert und per Benachrichtigung gemeldet; Filter für vegetarisch/vegan
 - **Änderungs-Hinweise**: Benachrichtigung, wenn eine Vorlesung ausfällt, verlegt wird oder den Raum wechselt
 - **Tagesvorschau** am Vorabend oder morgens: alle Termine des Tages auf einen Blick
 - **Ausfälle** werden durchgestrichen angezeigt

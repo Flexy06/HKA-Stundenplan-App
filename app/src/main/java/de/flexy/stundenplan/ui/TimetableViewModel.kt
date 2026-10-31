@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import de.flexy.stundenplan.data.CampusMapData
 import de.flexy.stundenplan.data.CampusMapRepository
 import de.flexy.stundenplan.data.ChangeDetector
+import de.flexy.stundenplan.data.Diet
 import de.flexy.stundenplan.data.Lecture
 import de.flexy.stundenplan.data.LectureFilter
 import de.flexy.stundenplan.data.Rhythm
@@ -41,6 +42,9 @@ data class UiState(
     val mensa: Map<java.time.LocalDate, List<MensaLine>> = emptyMap(),
     val showMensa: Boolean = true,
     val notifyChanges: Boolean = true,
+    val mensaDiet: Diet = Diet.ALL,
+    val mensaFavorites: Set<String> = emptySet(),
+    val notifyFavorites: Boolean = true,
 ) {
     val visible: List<Lecture> by lazy {
         val f = LectureFilter(hidden, rhythms, skipped)
@@ -72,6 +76,9 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
             weekView = repo.viewMode == "week",
             showMensa = repo.showMensa,
             notifyChanges = repo.notifyChanges,
+            mensaDiet = repo.mensaDiet,
+            mensaFavorites = repo.mensaFavorites,
+            notifyFavorites = repo.notifyFavorites,
         )
     )
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -205,6 +212,30 @@ class TimetableViewModel(app: Application) : AndroidViewModel(app) {
         repo.showMensa = value
         _state.update { it.copy(showMensa = value) }
         if (value) loadMensa()
+    }
+
+    fun setMensaDiet(diet: Diet) {
+        repo.mensaDiet = diet
+        _state.update { it.copy(mensaDiet = diet) }
+    }
+
+    fun addMensaFavorite(keyword: String) {
+        val k = keyword.trim()
+        if (k.isEmpty() || _state.value.mensaFavorites.any { it.equals(k, ignoreCase = true) }) return
+        val next = _state.value.mensaFavorites + k
+        repo.mensaFavorites = next
+        _state.update { it.copy(mensaFavorites = next) }
+    }
+
+    fun removeMensaFavorite(keyword: String) {
+        val next = _state.value.mensaFavorites - keyword
+        repo.mensaFavorites = next
+        _state.update { it.copy(mensaFavorites = next) }
+    }
+
+    fun setNotifyFavorites(value: Boolean) {
+        repo.notifyFavorites = value
+        _state.update { it.copy(notifyFavorites = value) }
     }
 
     fun setNotifyChanges(value: Boolean) {

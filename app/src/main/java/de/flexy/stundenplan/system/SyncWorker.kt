@@ -21,6 +21,8 @@ import androidx.work.WorkerParameters
 import de.flexy.stundenplan.MainActivity
 import de.flexy.stundenplan.R
 import de.flexy.stundenplan.data.ChangeDetector
+import de.flexy.stundenplan.data.MensaFavorites
+import de.flexy.stundenplan.data.MensaRepository
 import de.flexy.stundenplan.data.ScheduleChange
 import de.flexy.stundenplan.data.TimetableRepository
 import de.flexy.stundenplan.widget.NextLectureWidget
@@ -49,6 +51,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
         runCatching { Reminders.reschedule(ctx) }
         runCatching { NextLectureWidget.updateAll(ctx) }
+        runCatching { FavoriteNotifier.check(ctx, repo) }
         return Result.success()
     }
 
@@ -96,6 +99,70 @@ object ChangeNotifier {
             .setSmallIcon(R.drawable.ic_stat_lecture)
             .setContentTitle(title)
             .setContentText(changes.first().text)
+            .setStyle(style)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        try {
+            NotificationManagerCompat.from(context).notify(ID, notification)
+        } catch (_: SecurityException) {
+        }
+    }
+}
+
+/** Meldet Lieblingsgerichte der Mensa – heute (bis 13 Uhr) und morgen, jedes Gericht nur einmal. */
+object FavoriteNotifier {
+    private const val CHANNEL = "mensa_favorites"
+    private const val ID = 9002
+
+    suspend fun check(context: Context, repo: TimetableRepository) {
+        val favorites = repo.mensaFavorites
+        if (!repo.notifyFavorites || !repo.showMensa || favorites.isEmpty()) return
+        val now = LocalDateTime.now()
+        val today = now.toLocalDate()
+        val menu = MensaRepository(context).load()
+        val notified = repo.notifiedFavorites
+        val hits = MensaFavorites.hits(menu, favorites, repo.mensaDiet, today)
+            .filter { it.date == today.plusDays(1) || (it.date == today && now.hour < 13) }
+            .filter { MensaFavorites.key(it) !in notified }
+        if (hits.isEmpty()) return
+        send(context, hits.map { h ->
+            val day = when (h.date) {
+                today -> "Heute"
+                else -> "Morgen"
+            }
+            "$day: ${h.meal.name}" + if (h.meal.price.isNotBlank()) " · ${h.meal.price}" else ""
+        })
+        // Alte Einträge verwerfen, damit die Liste nicht wächst
+        repo.notifiedFavorites = notified.filter { it.substringBefore('|') >= today.toString() }.toSet() +
+            hits.map(MensaFavorites::key)
+    }
+
+    private fun send(context: Context, lines: List<String>) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = context.getSystemService(NotificationManager::class.java)
+            if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
+                nm.createNotificationChannel(
+                    NotificationChannel(CHANNEL, "Mensa-Favoriten", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                        description = "Wenn ein Lieblingsgericht auf dem Speiseplan steht"
+                    }
+                )
+            }
+        }
+        val open = PendingIntent.getActivity(
+            context, 3,
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val style = NotificationCompat.InboxStyle()
+        lines.take(6).forEach { style.addLine(it) }
+        val notification = NotificationCompat.Builder(context, CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_lecture)
+            .setContentTitle(if (lines.size == 1) "Lieblingsgericht in der Mensa" else "${lines.size} Lieblingsgerichte in der Mensa")
+            .setContentText(lines.first())
             .setStyle(style)
             .setContentIntent(open)
             .setAutoCancel(true)

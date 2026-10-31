@@ -77,6 +77,25 @@ class TimetableRepository(context: Context) {
         get() = prefs.getBoolean("showMensa", true)
         set(value) = prefs.edit().putBoolean("showMensa", value).apply()
 
+    var mensaDiet: Diet
+        get() = runCatching { Diet.valueOf(prefs.getString("mensaDiet", null).orEmpty()) }.getOrDefault(Diet.ALL)
+        set(value) = prefs.edit().putString("mensaDiet", value.name).apply()
+
+    /** Stichwörter für Lieblingsgerichte, z.B. "Currywurst". */
+    var mensaFavorites: Set<String>
+        get() = prefs.getStringSet("mensaFavorites", emptySet())?.toSet() ?: emptySet()
+        set(value) = prefs.edit().putStringSet("mensaFavorites", value).apply()
+
+    /** Benachrichtigung, wenn ein Favorit auf dem Speiseplan steht. */
+    var notifyFavorites: Boolean
+        get() = prefs.getBoolean("notifyFavorites", true)
+        set(value) = prefs.edit().putBoolean("notifyFavorites", value).apply()
+
+    /** Schon gemeldete Favoriten-Treffer ("Datum|Gericht"), damit nichts doppelt kommt. */
+    var notifiedFavorites: Set<String>
+        get() = prefs.getStringSet("notifiedFavorites", emptySet())?.toSet() ?: emptySet()
+        set(value) = prefs.edit().putStringSet("notifiedFavorites", value).apply()
+
     /** Benachrichtigung bei Ausfällen/Raumänderungen (Hintergrund-Abgleich). */
     var notifyChanges: Boolean
         get() = prefs.getBoolean("notifyChanges", true)

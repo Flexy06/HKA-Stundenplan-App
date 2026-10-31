@@ -81,4 +81,33 @@ class SharedLogicTest {
         val long = lec("Mathematik/Höhere Mathematik 1", "08:00", "09:30")
         assertEquals(listOf(long), TimetableBuilder.dedupe(listOf(short, long)))
     }
+
+    private fun meal(name: String, vegan: Boolean = false, veg: Boolean = false) = Meal(name, "3,00 €", vegan, veg)
+
+    @Test fun mensaDietFilter() {
+        val lines = listOf(
+            MensaLine("Wahlessen 1", listOf(meal("Currywurst"), meal("Gemüsepfanne", veg = true))),
+            MensaLine("Wahlessen 2", listOf(meal("Linsen-Dal", vegan = true))),
+            MensaLine("Wahlessen 3", listOf(meal("Schnitzel"))),
+        )
+        assertEquals(lines, MensaFavorites.filter(lines, Diet.ALL))
+        assertEquals(listOf("Gemüsepfanne", "Linsen-Dal"), MensaFavorites.filter(lines, Diet.VEGETARIAN).flatMap { l -> l.meals.map { it.name } })
+        assertEquals(listOf("Wahlessen 2"), MensaFavorites.filter(lines, Diet.VEGAN).map { it.name })
+    }
+
+    @Test fun mensaFavoriteHits() {
+        val d1 = java.time.LocalDate.of(2026, 11, 2)
+        val d2 = d1.plusDays(1)
+        val menu = mapOf(
+            d2 to listOf(MensaLine("W1", listOf(meal("Currywurst mit Pommes"), meal("Currywurst mit Pommes")))),
+            d1 to listOf(MensaLine("W1", listOf(meal("Linsen-Dal", vegan = true), meal("Schnitzel")))),
+        )
+        val hits = MensaFavorites.hits(menu, listOf("currywurst", " ", "dal"), Diet.ALL, d1)
+        assertEquals(listOf(d1, d2), hits.map { it.date })
+        assertEquals("dal", hits[0].keyword)
+        assertEquals(1, hits.count { it.date == d2 }) // Duplikat nur einmal
+        assertTrue(MensaFavorites.hits(menu, listOf("currywurst"), Diet.VEGAN, d1).isEmpty())
+        assertTrue(MensaFavorites.hits(menu, listOf("dal"), Diet.ALL, d2).isEmpty()) // vergangen
+        assertTrue(MensaFavorites.hits(menu, emptyList(), Diet.ALL, d1).isEmpty())
+    }
 }

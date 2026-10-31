@@ -46,11 +46,13 @@ import androidx.compose.material.icons.rounded.EventBusy
 import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
@@ -77,6 +79,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import de.flexy.stundenplan.data.Diet
 import de.flexy.stundenplan.data.Lecture
 import de.flexy.stundenplan.data.LectureFilter
 import de.flexy.stundenplan.data.Rhythm
@@ -487,6 +490,7 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                 SwitchRow("Mensa-Speiseplan", "Essen der Mensa Moltke in der Mittagspause zeigen", state.showMensa) {
                     vm.setShowMensa(it)
                 }
+                if (state.showMensa) MensaSettings(state, vm)
                 val context = LocalContext.current
                 val exportable = remember(state.visible) { state.visible.filter { !it.cancelled } }
                 TextButton(
@@ -557,6 +561,68 @@ fun SettingsSheet(state: UiState, vm: TimetableViewModel, onDismiss: () -> Unit)
                 )
                 Spacer(Modifier.height(24.dp))
             }
+        }
+    }
+}
+
+/** Ernährungsfilter und Lieblingsgerichte der Mensa. */
+@Composable
+private fun MensaSettings(state: UiState, vm: TimetableViewModel) {
+    val haptics = rememberHaptics()
+    var keyword by remember { mutableStateOf("") }
+    fun add() {
+        vm.addMensaFavorite(keyword)
+        keyword = ""
+    }
+    Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+        Text("Mensa: Ernährung", style = MaterialTheme.typography.bodyLarge)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(Diet.ALL to "Alles", Diet.VEGETARIAN to "Vegetarisch", Diet.VEGAN to "Vegan").forEach { (diet, label) ->
+                FilterChip(
+                    selected = state.mensaDiet == diet,
+                    onClick = { haptics.tick(); vm.setMensaDiet(diet) },
+                    label = { Text(label) },
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text("Lieblingsgerichte", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            "Stichwörter wie „Currywurst“ – Treffer sind im Speiseplan markiert.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = keyword,
+                onValueChange = { keyword = it },
+                placeholder = { Text("z.B. Currywurst") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { add() }),
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(12.dp))
+            Button(onClick = { add() }, enabled = keyword.isNotBlank()) { Text("Hinzufügen") }
+        }
+        if (state.mensaFavorites.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.mensaFavorites.sortedBy { it.lowercase() }.forEach { fav ->
+                    InputChip(
+                        selected = false,
+                        onClick = { haptics.tick(); vm.removeMensaFavorite(fav) },
+                        label = { Text(fav) },
+                        trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = "Entfernen", Modifier.size(16.dp)) },
+                    )
+                }
+            }
+            SwitchRow(
+                "Favoriten melden",
+                "Benachrichtigung, wenn ein Lieblingsgericht auf dem Plan steht",
+                state.notifyFavorites,
+            ) { vm.setNotifyFavorites(it) }
         }
     }
 }
